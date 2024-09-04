@@ -1,0 +1,46 @@
+@startuml 01.空投合约账户结构
+  title 空投合约账户结构
+
+  struct AirdropManager {
+    admin: Pubkey, // 管理员账户
+    ....
+    holder: Pubkey, // 空投代币的持有者账户，pda地址
+    ....
+    ft_singer_checker: Pubkey, // 签名校验账户, 用于spl-token
+    ....
+    nft_singer_checker: Pubkey, // 签名校验账户, 用于nft
+  }
+  note left
+    空投合约的管理者账户
+    ----
+    创建时间：初始化时
+  end note
+
+@enduml
+
+'-------------------------------------------------------------
+
+@startuml 02.业务流程
+  title 业务流程-流程图
+
+|#LightGreen|manage| 管理侧
+|#LightBlue|user| 用户侧
+
+|manage|
+  start
+
+  :获取空投合约的pda账户, holder 账户;
+
+  :财务账户向 holder 账户转入对应的ft/nft;
+
+  :转入时， holder 账户对应的token-account账户不存则，则创建;
+
+|user|
+  :拿到off-sign签名数据;
+
+  :发起交易，申领空投;
+
+@enduml
+
+'-------------------------------------------------------------
+
