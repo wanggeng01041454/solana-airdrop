@@ -15,5 +15,14 @@ url = "https://api.apr.dev"
 cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
+
+[[test.genesis]]
+address = "4U17W5WH9JJQZK9HcZaD9mYhWehhBSyymAoG6gMYj5CW"
+# 使用.so文件在工程中的相对路径，才可以部署成功
+program = "target/deploy/nonce_verify.so"
+
+
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+# --run 表示不监视文件变化， 运行一次测试就退出
+# 在 vitest.config.ts 中增加配置： reporters: ['verbose']， 使得测试结果更详细
+test = "yarn run vitest --run "

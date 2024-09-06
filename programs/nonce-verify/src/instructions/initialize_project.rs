@@ -3,9 +3,9 @@ use anchor_lang::prelude::*;
 use crate::constants::PROJECT_SEED;
 
 pub fn initialize_project(ctx: Context<InitializeProject>, params: InitializeProjectParams) -> Result<()> {
-    
+    msg!("initialize project");
     ctx.accounts.project.set_inner(Project {
-        admin: params.admin,
+        admin: ctx.accounts.admin.as_ref().map(|a| *a.key),
         business_fee: params.business_fee,
         user_fee: params.user_fee,
     });
@@ -38,6 +38,9 @@ pub struct InitializeProject<'info> {
 
     pub base: Signer<'info>,
 
+    /// 管理员账户, 可选账户
+    pub admin: Option<UncheckedAccount<'info>>,
+
     #[account(
       init, 
       payer = payer, 
@@ -52,10 +55,6 @@ pub struct InitializeProject<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Default, Debug, Clone)]
 pub struct InitializeProjectParams {
-    /// 管理员账户
-    /// 如果存在，则每次注册新的业务时，需要管理员签名
-    pub admin: Option<Pubkey>,
-
     /// 业务费用
     /// 每次注册新业务时需要支付的费用
     pub business_fee: u16,

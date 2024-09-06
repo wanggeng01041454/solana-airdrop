@@ -5,3 +5,11 @@ target
 node_modules
 test-ledger
 .yarn
+
+# 使用yarn, 不使用 npm
+package-lock.json
+
+
+# 保存两个地址文件在repo中
+!target/deploy/nonce_verify-keypair.json
+!target/deploy/solana_airdrop-keypair.json
