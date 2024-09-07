@@ -25,4 +25,4 @@ program = "target/deploy/nonce_verify.so"
 [scripts]
 # --run 表示不监视文件变化， 运行一次测试就退出
 # 在 vitest.config.ts 中增加配置： reporters: ['verbose']， 使得测试结果更详细
-test = "yarn run vitest --run "
+test = "npx vitest --run "

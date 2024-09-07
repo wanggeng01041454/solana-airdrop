@@ -1,6 +1,6 @@
-mod instructions;
 mod constants;
 mod errors;
+mod instructions;
 
 use anchor_lang::prelude::*;
 
@@ -14,10 +14,19 @@ pub mod nonce_verify {
     use super::*;
 
     /// 初始化-nonce-verify
-    pub fn initialize_project(
-        ctx: Context<InitializeProject>, 
-        params: InitializeProjectParams
+    /// 初始化一个新的nonce-verify项目
+    pub fn initialize_nonce_project(
+        ctx: Context<InitializeNonceProjectAccounts>,
+        params: InitializeNonceProjectParams,
     ) -> Result<()> {
-        instructions::initialize_project(ctx, params)
+        instructions::initialize_nonce_project(ctx, params)
+    }
+
+    /// 注册一个业务工程
+    pub fn register_business_project(
+        ctx: Context<RegisterBusinessProjectAccounts>,
+        params: RegisterBusinessProjectParams,
+    ) -> Result<()> {
+        instructions::register_business_project(ctx, params)
     }
 }
