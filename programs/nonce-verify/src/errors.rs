@@ -7,4 +7,7 @@ pub enum NonceVerifyErrors {
 
     #[msg("run out of nonce project's admin signature")]
     RunOutOfAdminSignature,
+
+    #[msg("nonce value not match")]
+    NonceValueNotMatch,
 }

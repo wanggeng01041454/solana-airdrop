@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 // 注意！这里要用CpiContext 的transfer方法, 不能使用 anchor_lang::solana_program::system_program::transfer
 use anchor_lang::system_program;
 
-use crate::constants::NONCE_PROJECT_SEED;
+use crate::constants::{NONCE_PROJECT_SEED, BUSINESS_PROJECT_SEED};
 use crate::errors::NonceVerifyErrors;
 use crate::instructions::initialize_nonce_project::NonceProject;
 
@@ -13,7 +13,7 @@ pub fn register_business_project(
 ) -> Result<()> {
     msg!("register business project");
 
-    // 检查是否需要管理员签名,
+    // 检查是否需要管理员签名, 并验证管理员签名
     if let Some(admin) = &ctx.accounts.nonce_project.admin {
         if ctx.accounts.nonce_admin.is_none() {
             return err!(NonceVerifyErrors::RunOutOfAdminSignature);
@@ -44,6 +44,7 @@ pub fn register_business_project(
     ctx.accounts.business_project.set_inner(BusinessProject {
         project_id: params.project_id.clone(),
         authority: ctx.accounts.business_authority.key(),
+        nonce_project: ctx.accounts.nonce_project.key(),
     });
 
     Ok(())
@@ -59,17 +60,19 @@ pub struct BusinessProject {
     /// 授权账户
     /// 每次验证nonce需要该授权账户的签名
     pub authority: Pubkey,
+
+    /// 关联的nonce-project
+    pub nonce_project: Pubkey,
 }
 
 impl BusinessProject {
-    // name 的每个字符最多占用4个字节（unicode）
-    const LEN: usize = 8 + 32 + 32;
+    const LEN: usize = 8 + 32 + 32 + 32;
 }
 
 #[derive(Accounts)]
 #[instruction(params: RegisterBusinessProjectParams)]
 pub struct RegisterBusinessProjectAccounts<'info> {
-    /// 交易费支付账户
+    /// 创建账户费用-支付账户
     #[account(mut)]
     pub payer: Signer<'info>,
 
@@ -85,7 +88,11 @@ pub struct RegisterBusinessProjectAccounts<'info> {
     #[account(
         init, 
         payer = payer, 
-        seeds = [nonce_project.key().as_ref(), params.project_id.as_ref()],
+        seeds = [
+            BUSINESS_PROJECT_SEED,
+            nonce_project.key().as_ref(), 
+            params.project_id.as_ref()
+            ],
         bump,
         space = BusinessProject::LEN
     )]
@@ -97,7 +104,10 @@ pub struct RegisterBusinessProjectAccounts<'info> {
     /// nonce Project账户, 使用该账户收款
     #[account(
         mut,
-        seeds = [NONCE_PROJECT_SEED, nonce_project.base.key().as_ref()],
+        seeds = [
+            NONCE_PROJECT_SEED, 
+            nonce_project.base.key().as_ref()
+            ],
         bump
     )]
     pub nonce_project: Box<Account<'info, NonceProject>>,

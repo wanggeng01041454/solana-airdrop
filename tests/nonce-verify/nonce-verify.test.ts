@@ -18,7 +18,6 @@ import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 
 
 import { describe, expect, test, beforeAll } from "vitest"
-import { aw } from "vitest/dist/chunks/reporters.C_zwCd4j";
 
 
 // 测试时使用的，全局的payer账户

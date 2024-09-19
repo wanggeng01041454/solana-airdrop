@@ -70,8 +70,8 @@ export interface RegisterBusinessProjectActionParams extends BaseActionParams {
 }
 
 
-const NONCE_VERIFY_PROJECT = Buffer.from("nonce_verify_project");
-const MAX_BUSINESS_NAME_LEN = 32;
+const NONCE_VERIFY_PROJECT_SEED = Buffer.from("nonce_verify_project");
+const BUSINESS_PROJECT_SEED = Buffer.from("business_project");
 
 /**
  * 访问 NonceVerify 合约的 provider
@@ -113,7 +113,7 @@ export class NonceVerifyProvider {
    */
   public findNonceProjectAddress(base: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
-      [NONCE_VERIFY_PROJECT, base.toBuffer()],
+      [NONCE_VERIFY_PROJECT_SEED, base.toBuffer()],
       this.program.programId
     )[0];
   }
@@ -126,7 +126,11 @@ export class NonceVerifyProvider {
    */
   public findBusinessProjectAddress(nonceBase: PublicKey, projectId: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
-      [this.findNonceProjectAddress(nonceBase).toBuffer(), projectId.toBuffer()],
+      [
+        BUSINESS_PROJECT_SEED,
+        this.findNonceProjectAddress(nonceBase).toBuffer(),
+        projectId.toBuffer()
+      ],
       this.program.programId
     )[0];
   }

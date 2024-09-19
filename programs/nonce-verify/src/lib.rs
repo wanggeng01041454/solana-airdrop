@@ -29,4 +29,12 @@ pub mod nonce_verify {
     ) -> Result<()> {
         instructions::register_business_project(ctx, params)
     }
+
+    /// 验证业务nonce
+    pub fn verify_business_nonce(
+        ctx: Context<VerifyBusinessNonceAccounts>,
+        params: VerifyBusinessNonceParams,
+    ) -> Result<u32> {
+        instructions::verify_business_nonce(ctx, params)
+    }
 }
