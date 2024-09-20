@@ -29,11 +29,20 @@ export type ProgramNonceProjectAccount = anchor.IdlTypes<NonceVerify>["nonceProj
 export type ProgramRegisterBusinessProjectParams = anchor.IdlTypes<NonceVerify>["registerBusinessProjectParams"];
 export type ProgramBusinessProjectAccount = anchor.IdlTypes<NonceVerify>["businessProject"];
 
+export type ProgramVerifyUserBusinessNonceParams = anchor.IdlTypes<NonceVerify>["verifyBusinessNonceParams"];
+export type ProgramUserBusinessNonceAccount = anchor.IdlTypes<NonceVerify>["userBusinessNonce"];
+
 
 // 辅助类型参数
+/**
+ * @description 初始化 NonceProject 参数
+ * 特别说明： 所有的 *Keypair参数，都是可选的，只有在 buildType 为 SendAndFinalizeTx 或 SendAndConfirmTx 时，才需要传入
+ */
 export interface InitializeNonceProjectActionParams extends BaseActionParams {
-  businessFee: number,
-  userFee: number,
+  // 业务费用, 默认为 0
+  businessFee?: number,
+  userFee?: number,
+
   // 交易费支付者
   payer: PublicKey,
   payerKeypair?: Keypair,
@@ -46,6 +55,10 @@ export interface InitializeNonceProjectActionParams extends BaseActionParams {
   admin?: PublicKey,
 }
 
+/**
+ * @description 注册 BusinessProject 参数
+ * 特别说明： 所有的 *Keypair参数，都是可选的，只有在 buildType 为 SendAndFinalizeTx 或 SendAndConfirmTx 时，才需要传入
+ */
 export interface RegisterBusinessProjectActionParams extends BaseActionParams {
   // 项目的唯一标识，使用一个公钥地址标识，可以通过随机生成一个公钥得到唯一标识符
   projectId: PublicKey,
@@ -64,14 +77,43 @@ export interface RegisterBusinessProjectActionParams extends BaseActionParams {
   // nonce-project 的 base 账户
   nonceBase: PublicKey,
 
-  // nonce-project 的 admin 账户，如果有
+  // nonce-project 的 admin 账户
+  // 如果创建 nonce-project 时指定了 admin， 则在注册 business-project 时，需要这个admin签名
   nonceAdmin?: PublicKey,
   nonceAdminKeypair?: Keypair,
 }
 
+/**
+ * @description 验证用户业务 Nonce 参数; 
+ * @description 很少有场景会直接使用该参数调用对应函数。 用户业务nonce通常是通过 程序间调用来进行的。如果你需要使用该参数，请清楚知道你在做什么
+ * 特别说明： 所有的 *Keypair参数，都是可选的，只有在 buildType 为 SendAndFinalizeTx 或 SendAndConfirmTx 时，才需要传入
+ */
+export interface VerifyUserBusinessNonceActionParams extends BaseActionParams {
+  // 交易费支付者
+  payer: PublicKey,
+  payerKeypair?: Keypair,
+
+  // 用户
+  user: PublicKey,
+  userKeypair?: Keypair,
+
+  // 当前用户的 nonce
+  curNonceValue: number,
+
+  // user-fee 支付者
+  userFeePayer: PublicKey,
+  userFeePayerKeypair?: Keypair,
+
+  // business project 的 account pubkey
+  businessProject: PublicKey,
+  // business project 的 authority
+  businessProjectAuthorityKeypair: Keypair
+}
 
 const NONCE_VERIFY_PROJECT_SEED = Buffer.from("nonce_verify_project");
 const BUSINESS_PROJECT_SEED = Buffer.from("business_project");
+const USER_BUSINESS_NONCE_SEED = Buffer.from("user_business_nonce");
+
 
 /**
  * 访问 NonceVerify 合约的 provider
@@ -124,12 +166,37 @@ export class NonceVerifyProvider {
    * @param projectId 
    * @returns 
    */
-  public findBusinessProjectAddress(nonceBase: PublicKey, projectId: PublicKey): PublicKey {
+  public findBusinessProjectAddress(params: {
+    nonceBase: PublicKey,
+    projectId: PublicKey
+  }): PublicKey {
+    const { nonceBase, projectId } = params;
     return PublicKey.findProgramAddressSync(
       [
         BUSINESS_PROJECT_SEED,
         this.findNonceProjectAddress(nonceBase).toBuffer(),
         projectId.toBuffer()
+      ],
+      this.program.programId
+    )[0];
+  }
+
+  /**
+   * @description 查找用户业务 Nonce 地址
+   * @param params 
+   * @returns 
+   */
+  public findUserBusinessNonceAddress(params: {
+    businessProject: PublicKey,
+    user: PublicKey
+  }): PublicKey {
+    const { businessProject, user } = params;
+
+    return PublicKey.findProgramAddressSync(
+      [
+        USER_BUSINESS_NONCE_SEED,
+        businessProject.toBuffer(),
+        user.toBuffer()
       ],
       this.program.programId
     )[0];
@@ -143,8 +210,8 @@ export class NonceVerifyProvider {
   public async initializeNonceProjectAction(params: InitializeNonceProjectActionParams): Promise<ActionResult> {
 
     const initializeProjectParams: ProgramInitializeNonceProjectParams = {
-      businessFee: params.businessFee,
-      userFee: params.userFee,
+      businessFee: params.businessFee ? params.businessFee : 0,
+      userFee: params.userFee ? params.userFee : 0,
     };
 
     // 构造指令
@@ -196,7 +263,10 @@ export class NonceVerifyProvider {
       businessAuthority: params.projectAuthority,
       nonceProject: this.findNonceProjectAddress(params.nonceBase),
       base: params.nonceBase,
-      businessProject: this.findBusinessProjectAddress(params.nonceBase, params.projectId)
+      businessProject: this.findBusinessProjectAddress({
+        nonceBase: params.nonceBase,
+        projectId: params.projectId
+      })
     };
 
     const ix = await this.program.methods
@@ -224,7 +294,87 @@ export class NonceVerifyProvider {
    * @returns 
    */
   public async getBusinessProjectAccount(nonceBase: PublicKey, projectId: PublicKey): Promise<ProgramBusinessProjectAccount> {
-    return await this.program.account.businessProject.fetch(this.findBusinessProjectAddress(nonceBase, projectId));
+    return await this.program.account.businessProject.fetch(this.findBusinessProjectAddress({ nonceBase, projectId }));
   }
 
+  /**
+   * @description 获取用户业务 Nonce
+   * 如果对应的用户业务 nonce 不存在，则返回 0
+   * 如果 businessProject 不存在，则抛出异常
+   * @param params.userPubkey 用户账户公钥
+   * @param params.businessProject 业务工程账户公钥
+   */
+  public async getUserBusinessNonce(params: {
+    userPubkey: PublicKey,
+    businessProject: PublicKey
+  }): Promise<number> {
+    const { userPubkey, businessProject } = params;
+
+    const businessProjectAccountInfo = await this.connection.getAccountInfo(businessProject);
+    if (!businessProjectAccountInfo) {
+      throw new Error(`businessProject: ${businessProject.toBase58()} not found`);
+    }
+
+    const userBusinessNonceAddress = this.findUserBusinessNonceAddress({ businessProject, user: userPubkey });
+    const userBusinessNonceAccountInfo = await this.connection.getAccountInfo(userBusinessNonceAddress);
+
+    if (!userBusinessNonceAccountInfo) {
+      return 0;
+    }
+
+    // 解析 userBusinessNonce Account Data
+    // 注意这个写法！！！ 获取AccountData后， 可以用这种方式进行解码
+    const data: ProgramUserBusinessNonceAccount =
+      this.program.account.userBusinessNonce.coder.accounts.decode("userBusinessNonce", userBusinessNonceAccountInfo.data);
+
+    return data.nonceValue;
+  }
+
+
+  /**
+   * @description 验证用户业务 Nonce
+   * @description 很少有场景会直接使用该函数，用户业务nonce通常是通过 程序间调用来进行的。如果你需要使用该函数，请清楚知道你在做什么
+   * @param params 
+   */
+  public async doVerifyUserBusinessNonce(params: VerifyUserBusinessNonceActionParams): Promise<ActionResult> {
+    const verifyUserBusinessNonceParams: ProgramVerifyUserBusinessNonceParams = {
+      nonceValue: params.curNonceValue
+    };
+
+    const businessProjectAccountData: ProgramBusinessProjectAccount = await this.program.account.businessProject.fetch(params.businessProject);
+
+    const accounts = {
+      payer: params.payer,
+      userFeePayer: params.userFeePayer,
+
+      nonceUser: params.user,
+
+      nonceProject: businessProjectAccountData.nonceProject,
+
+      authority: businessProjectAccountData.authority,
+      businessProject: params.businessProject,
+
+      userBusinessNonce: this.findUserBusinessNonceAddress({
+        businessProject: params.businessProject,
+        user: params.user
+      }),
+    };
+
+    const ix = await this.program.methods
+      .verifyBusinessNonce(verifyUserBusinessNonceParams)
+      .accounts(accounts).instruction();
+
+    const buildParams: BuildActionResultParams = {
+      buildType: params.buildType,
+      cuPrice: params.cuPrice,
+      cuFactor: params.cuFactor,
+
+      connection: this.connection,
+      ixs: [ix],
+      payer: params.payer,
+      signers: [params.payerKeypair, params.userKeypair, params.userFeePayerKeypair, params.businessProjectAuthorityKeypair]
+    };
+
+    return await buildActionResult(buildParams);
+  }
 }
