@@ -60,7 +60,7 @@ pub fn verify_business_nonce(
 pub struct UserBusinessNonce {
     /// 标记本账户是否已经初始化过了，如果已经初始化过了，则不再初始化
     /// 使用独立标记，防止bug
-    is_initialized: bool, // 1 byte
+    pub is_initialized: bool, // 1 byte
 
     /// 用户的nonce值
     pub nonce_value: u32,
@@ -105,26 +105,27 @@ pub struct VerifyBusinessNonceAccounts<'info> {
 
 
     /// 需要 project-authority 的签名
-    pub authority: Signer<'info>,
+    pub business_project_authority: Signer<'info>,
 
     /// business-project账户
     #[account(
         has_one = nonce_project,
-        has_one = authority,
+        has_one = business_project_authority,
         seeds = [
             BUSINESS_PROJECT_SEED,
             nonce_project.key().as_ref(), 
-            business_project.project_id.as_ref()
+            business_project.business_project_id.as_ref()
         ],
         bump,
     )]
     pub business_project: Box<Account<'info, BusinessProject>>,
 
-    /// nonce Project账户, 验证 business nonce, 读取费用信息
+    /// nonce Project账户, 验证 business nonce, 读取费用信息, 并收取费用
     #[account(
+        mut,
         seeds = [
             NONCE_PROJECT_SEED, 
-            nonce_project.base.key().as_ref()
+            nonce_project.nonce_project_base.key().as_ref()
             ],
         bump
     )]

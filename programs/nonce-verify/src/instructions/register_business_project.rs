@@ -14,11 +14,11 @@ pub fn register_business_project(
     msg!("register business project");
 
     // 检查是否需要管理员签名, 并验证管理员签名
-    if let Some(admin) = &ctx.accounts.nonce_project.admin {
-        if ctx.accounts.nonce_admin.is_none() {
+    if let Some(admin) = &ctx.accounts.nonce_project.nonce_project_admin {
+        if ctx.accounts.nonce_project_admin.is_none() {
             return err!(NonceVerifyErrors::RunOutOfAdminSignature);
         }
-        let nonce_admin = ctx.accounts.nonce_admin.as_ref().unwrap();
+        let nonce_admin = ctx.accounts.nonce_project_admin.as_ref().unwrap();
         if nonce_admin.key() != *admin {
             return err!(NonceVerifyErrors::RunOutOfAdminSignature);
         }
@@ -42,8 +42,8 @@ pub fn register_business_project(
 
     // 创建 business-project 账户
     ctx.accounts.business_project.set_inner(BusinessProject {
-        project_id: params.project_id.clone(),
-        authority: ctx.accounts.business_authority.key(),
+        business_project_id: params.project_id.clone(),
+        business_project_authority: ctx.accounts.business_project_authority.key(),
         nonce_project: ctx.accounts.nonce_project.key(),
     });
 
@@ -55,11 +55,11 @@ pub fn register_business_project(
 #[account]
 pub struct BusinessProject {
     /// 业务工程的唯一ID
-    pub project_id: Pubkey,
+    pub business_project_id: Pubkey,
 
     /// 授权账户
     /// 每次验证nonce需要该授权账户的签名
-    pub authority: Pubkey,
+    pub business_project_authority: Pubkey,
 
     /// 关联的nonce-project
     pub nonce_project: Pubkey,
@@ -82,7 +82,7 @@ pub struct RegisterBusinessProjectAccounts<'info> {
 
     /// 业务的权限管理账户
     /// CHECK: 考虑到 business_authority 可以是pda, 也可以是普通账户, 所以只在验证nonce时检查，设置时则不检查
-    pub business_authority: AccountInfo<'info>,
+    pub business_project_authority: AccountInfo<'info>,
 
     /// business-project账户
     #[account(
@@ -99,14 +99,14 @@ pub struct RegisterBusinessProjectAccounts<'info> {
     pub business_project: Account<'info, BusinessProject>,
 
     /// 如果nonce-project 的 admin 存在，则需要它的签名
-    pub nonce_admin: Option<Signer<'info>>,
+    pub nonce_project_admin: Option<Signer<'info>>,
 
     /// nonce Project账户, 使用该账户收款
     #[account(
         mut,
         seeds = [
             NONCE_PROJECT_SEED, 
-            nonce_project.base.key().as_ref()
+            nonce_project.nonce_project_base.key().as_ref()
             ],
         bump
     )]

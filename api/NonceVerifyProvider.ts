@@ -219,8 +219,8 @@ export class NonceVerifyProvider {
       .initializeNonceProject(initializeProjectParams)
       .accounts({
         payer: params.payer,
-        admin: params.admin ? params.admin : null,
-        base: params.base
+        nonceProjectAdmin: params.admin ? params.admin : null,
+        nonceProjectBase: params.base
       }).instruction();
 
     const buildParams: BuildActionResultParams = {
@@ -259,8 +259,8 @@ export class NonceVerifyProvider {
     const accounts = {
       payer: params.payer,
       registerFeePayer: params.registerFeePayer,
-      nonceAdmin: params.nonceAdmin ? params.nonceAdmin : null,
-      businessAuthority: params.projectAuthority,
+      nonceProjectAdmin: params.nonceAdmin ? params.nonceAdmin : null,
+      businessProjectAuthority: params.projectAuthority,
       nonceProject: this.findNonceProjectAddress(params.nonceBase),
       base: params.nonceBase,
       businessProject: this.findBusinessProjectAddress({
@@ -351,7 +351,7 @@ export class NonceVerifyProvider {
 
       nonceProject: businessProjectAccountData.nonceProject,
 
-      authority: businessProjectAccountData.authority,
+      businessProjectAuthority: businessProjectAccountData.businessProjectAuthority,
       businessProject: params.businessProject,
 
       userBusinessNonce: this.findUserBusinessNonceAddress({

@@ -66,7 +66,7 @@ describe("nonce-verify 合约测试", async () => {
 
     expect(businessFee).toBe(businessFee);
     expect(userFee).toBe(nonceProjectAccount.userFee);
-    expect(adminKeypair.publicKey.toBase58()).toBe(nonceProjectAccount.admin.toBase58());
+    expect(adminKeypair.publicKey.toBase58()).toBe(nonceProjectAccount.nonceProjectAdmin.toBase58());
 
     // 注册业务工程
     const projectId = Keypair.generate().publicKey;
@@ -91,8 +91,8 @@ describe("nonce-verify 合约测试", async () => {
     console.log(`businessProjectAccount: ${JSON.stringify(businessProjectAccount, undefined, 2)}`);
 
     expect(nonceProjectBeforeBalance + businessFee).toBe(nonceProjectAfterBalance);
-    expect(businessProjectAccount.projectId.toBase58()).toBe(projectId.toBase58());
-    expect(businessProjectAccount.authority.toBase58()).toBe(projectAuthority.publicKey.toBase58());
+    expect(businessProjectAccount.businessProjectId.toBase58()).toBe(projectId.toBase58());
+    expect(businessProjectAccount.businessProjectAuthority.toBase58()).toBe(projectAuthority.publicKey.toBase58());
   });
 
 
@@ -125,7 +125,7 @@ describe("nonce-verify 合约测试", async () => {
     expect(initializeProjectParams.businessFee).toBe(nonceProjectAccount.businessFee);
     expect(initializeProjectParams.userFee).toBe(nonceProjectAccount.userFee);
 
-    expect(nonceProjectAccount.admin).toBe(null);
+    expect(nonceProjectAccount.nonceProjectAdmin).toBe(null);
 
     // 注册业务工程
     const projectId = Keypair.generate().publicKey;
@@ -160,8 +160,8 @@ describe("nonce-verify 合约测试", async () => {
     console.log(`businessProjectAccount: ${JSON.stringify(businessProjectAccount, undefined, 2)}`);
 
     expect(nonceProjectBeforeBalance + initializeProjectParams.businessFee).toBe(nonceProjectAfterBalance);
-    expect(businessProjectAccount.projectId.toBase58()).toBe(projectId.toBase58());
-    expect(businessProjectAccount.authority.toBase58()).toBe(projectAuthority.publicKey.toBase58());
+    expect(businessProjectAccount.businessProjectId.toBase58()).toBe(projectId.toBase58());
+    expect(businessProjectAccount.businessProjectAuthority.toBase58()).toBe(projectAuthority.publicKey.toBase58());
     expect(businessProjectAccount.nonceProject.toBase58()).toBe(nonceProjectPubkey.toBase58());
   });
 

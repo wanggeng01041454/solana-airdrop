@@ -5,9 +5,9 @@ use crate::constants::NONCE_PROJECT_SEED;
 pub fn initialize_nonce_project(ctx: Context<InitializeNonceProjectAccounts>, params: InitializeNonceProjectParams) -> Result<()> {
     msg!("initialize project");
 
-    ctx.accounts.project.set_inner(NonceProject {
-        admin: ctx.accounts.admin.as_ref().map(|a| *a.key),
-        base: *ctx.accounts.base.key,
+    ctx.accounts.nonce_project.set_inner(NonceProject {
+        nonce_project_admin: ctx.accounts.nonce_project_admin.as_ref().map(|a| *a.key),
+        nonce_project_base: *ctx.accounts.nonce_project_base.key,
         business_fee: params.business_fee,
         user_fee: params.user_fee,
     });
@@ -19,10 +19,10 @@ pub fn initialize_nonce_project(ctx: Context<InitializeNonceProjectAccounts>, pa
 pub struct NonceProject {
     /// 管理员账户
     /// 如果存在，则每次注册新的业务时，需要管理员签名
-    pub admin: Option<Pubkey>,
+    pub nonce_project_admin: Option<Pubkey>,
 
     /// base Account
-    pub base: Pubkey,
+    pub nonce_project_base: Pubkey,
 
     /// 业务费用
     /// 每次注册新业务时需要支付的费用, lamports
@@ -41,20 +41,23 @@ pub struct InitializeNonceProjectAccounts<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    pub base: Signer<'info>,
+    pub nonce_project_base: Signer<'info>,
 
     /// 管理员账户, 可选账户
     /// CHECK: 如果存在，需要在注册时签名
-    pub admin: Option<UncheckedAccount<'info>>,
+    pub nonce_project_admin: Option<UncheckedAccount<'info>>,
 
     #[account(
         init, 
         payer = payer, 
-        seeds = [NONCE_PROJECT_SEED, base.key().as_ref()],
+        seeds = [
+            NONCE_PROJECT_SEED, 
+            nonce_project_base.key().as_ref()
+        ],
         bump,
         space = NonceProject::LEN
     )]
-    pub project: Account<'info, NonceProject>,
+    pub nonce_project: Account<'info, NonceProject>,
 
     pub system_program: Program<'info, System>,
 }
