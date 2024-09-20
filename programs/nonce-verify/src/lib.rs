@@ -37,4 +37,8 @@ pub mod nonce_verify {
     ) -> Result<u32> {
         instructions::verify_business_nonce(ctx, params)
     }
+
+    //todo: 从 nonce-project 中取走费用
+    //todo: 变更 business-project 的authority
+
 }
