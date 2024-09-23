@@ -34,13 +34,6 @@
           "signer": true
         },
         {
-          "name": "nonce_project_admin",
-          "docs": [
-            "管理员账户, 可选账户"
-          ],
-          "optional": true
-        },
-        {
           "name": "nonce_project",
           "writable": true,
           "pda": {
@@ -124,12 +117,6 @@
           ],
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "business_project_authority",
-          "docs": [
-            "业务的权限管理账户"
-          ]
         },
         {
           "name": "business_project",
@@ -538,6 +525,16 @@
               "每次使用时需要支付的费用"
             ],
             "type": "u32"
+          },
+          {
+            "name": "nonce_project_admin",
+            "docs": [
+              "管理员账户, 可选账户",
+              "如果存在，需要在注册时签名"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
           }
         ]
       }
@@ -591,6 +588,14 @@
             "name": "project_id",
             "docs": [
               "业务工程的唯一ID"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "business_project_authority",
+            "docs": [
+              "业务的权限管理账户",
+              "fixme: 考虑到 business_authority 可以是pda, 也可以是普通账户, 所以只在验证nonce时检查，设置时则不检查"
             ],
             "type": "pubkey"
           }

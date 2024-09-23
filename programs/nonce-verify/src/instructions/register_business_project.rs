@@ -42,8 +42,8 @@ pub fn register_business_project(
 
     // 创建 business-project 账户
     ctx.accounts.business_project.set_inner(BusinessProject {
-        business_project_id: params.project_id.clone(),
-        business_project_authority: ctx.accounts.business_project_authority.key(),
+        business_project_id: params.project_id,
+        business_project_authority: params.business_project_authority,
         nonce_project: ctx.accounts.nonce_project.key(),
     });
 
@@ -80,11 +80,6 @@ pub struct RegisterBusinessProjectAccounts<'info> {
     #[account(mut)]
     pub register_fee_payer: Signer<'info>,
 
-    // todo, 没有任何签名限制，将其移动到参数中
-    /// 业务的权限管理账户
-    /// CHECK: 考虑到 business_authority 可以是pda, 也可以是普通账户, 所以只在验证nonce时检查，设置时则不检查
-    pub business_project_authority: AccountInfo<'info>,
-
     /// business-project账户
     #[account(
         init, 
@@ -120,4 +115,8 @@ pub struct RegisterBusinessProjectAccounts<'info> {
 pub struct RegisterBusinessProjectParams {
     /// 业务工程的唯一ID
     pub project_id: Pubkey,
+
+    /// 业务的权限管理账户
+    /// fixme: 考虑到 business_authority 可以是pda, 也可以是普通账户, 所以只在验证nonce时检查，设置时则不检查
+    pub business_project_authority: Pubkey,
 }

@@ -6,7 +6,7 @@ pub fn initialize_nonce_project(ctx: Context<InitializeNonceProjectAccounts>, pa
     msg!("initialize nonce project");
 
     ctx.accounts.nonce_project.set_inner(NonceProject {
-        nonce_project_admin: ctx.accounts.nonce_project_admin.as_ref().map(|a| *a.key),
+        nonce_project_admin: params.nonce_project_admin,
         nonce_project_base: *ctx.accounts.nonce_project_base.key,
         business_fee: params.business_fee,
         user_fee: params.user_fee,
@@ -43,10 +43,6 @@ pub struct InitializeNonceProjectAccounts<'info> {
 
     pub nonce_project_base: Signer<'info>,
 
-    /// 管理员账户, 可选账户
-    /// CHECK: 如果存在，需要在注册时签名
-    pub nonce_project_admin: Option<UncheckedAccount<'info>>,
-
     #[account(
         init, 
         payer = payer, 
@@ -70,4 +66,8 @@ pub struct InitializeNonceProjectParams {
 
     /// 每次使用时需要支付的费用
     pub user_fee: u32,
+
+    /// 管理员账户, 可选账户
+    /// 如果存在，需要在注册时签名
+    pub nonce_project_admin: Option<Pubkey>,
 }

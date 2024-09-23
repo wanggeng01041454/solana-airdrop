@@ -212,6 +212,7 @@ export class NonceVerifyProvider {
     const initializeProjectParams: ProgramInitializeNonceProjectParams = {
       businessFee: params.businessFee ? params.businessFee : 0,
       userFee: params.userFee ? params.userFee : 0,
+      nonceProjectAdmin: params.admin ? params.admin : null
     };
 
     // 构造指令
@@ -219,7 +220,6 @@ export class NonceVerifyProvider {
       .initializeNonceProject(initializeProjectParams)
       .accounts({
         payer: params.payer,
-        nonceProjectAdmin: params.admin ? params.admin : null,
         nonceProjectBase: params.base
       }).instruction();
 
@@ -253,6 +253,7 @@ export class NonceVerifyProvider {
   public async registerBusinessProjectAction(params: RegisterBusinessProjectActionParams): Promise<ActionResult> {
     const registerBusinessProjectParams: ProgramRegisterBusinessProjectParams = {
       projectId: params.projectId,
+      businessProjectAuthority: params.projectAuthority
     };
 
     // anchor 0.30.1 BUG: 所有pda账户使用字面量传递时都报错
