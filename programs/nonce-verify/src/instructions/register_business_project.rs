@@ -80,6 +80,7 @@ pub struct RegisterBusinessProjectAccounts<'info> {
     #[account(mut)]
     pub register_fee_payer: Signer<'info>,
 
+    // todo, 没有任何签名限制，将其移动到参数中
     /// 业务的权限管理账户
     /// CHECK: 考虑到 business_authority 可以是pda, 也可以是普通账户, 所以只在验证nonce时检查，设置时则不检查
     pub business_project_authority: AccountInfo<'info>,

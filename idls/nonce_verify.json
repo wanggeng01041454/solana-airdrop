@@ -1,0 +1,670 @@
+{
+  "address": "4U17W5WH9JJQZK9HcZaD9mYhWehhBSyymAoG6gMYj5CW",
+  "metadata": {
+    "name": "nonce_verify",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "initialize_nonce_project",
+      "docs": [
+        "初始化-nonce-verify",
+        "初始化一个新的nonce-verify项目"
+      ],
+      "discriminator": [
+        103,
+        125,
+        14,
+        142,
+        92,
+        231,
+        51,
+        84
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "nonce_project_base",
+          "signer": true
+        },
+        {
+          "name": "nonce_project_admin",
+          "docs": [
+            "管理员账户, 可选账户"
+          ],
+          "optional": true
+        },
+        {
+          "name": "nonce_project",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  110,
+                  99,
+                  101,
+                  95,
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  121,
+                  95,
+                  112,
+                  114,
+                  111,
+                  106,
+                  101,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "nonce_project_base"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeNonceProjectParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "register_business_project",
+      "docs": [
+        "注册一个业务工程"
+      ],
+      "discriminator": [
+        117,
+        47,
+        246,
+        115,
+        163,
+        207,
+        74,
+        82
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "创建账户费用-支付账户"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "register_fee_payer",
+          "docs": [
+            "注册费支付账户"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "business_project_authority",
+          "docs": [
+            "业务的权限管理账户"
+          ]
+        },
+        {
+          "name": "business_project",
+          "docs": [
+            "business-project账户"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  115,
+                  105,
+                  110,
+                  101,
+                  115,
+                  115,
+                  95,
+                  112,
+                  114,
+                  111,
+                  106,
+                  101,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "nonce_project"
+              },
+              {
+                "kind": "arg",
+                "path": "params.project_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "nonce_project_admin",
+          "docs": [
+            "如果nonce-project 的 admin 存在，则需要它的签名"
+          ],
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "nonce_project",
+          "docs": [
+            "nonce Project账户, 使用该账户收款"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  110,
+                  99,
+                  101,
+                  95,
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  121,
+                  95,
+                  112,
+                  114,
+                  111,
+                  106,
+                  101,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "nonce_project.nonce_project_base",
+                "account": "NonceProject"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "RegisterBusinessProjectParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "verify_business_nonce",
+      "docs": [
+        "验证业务nonce"
+      ],
+      "discriminator": [
+        189,
+        236,
+        186,
+        64,
+        10,
+        192,
+        184,
+        10
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "创建账户费用-支付账户"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_fee_payer",
+          "docs": [
+            "用户使用费-支付账户"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "nonce_user",
+          "docs": [
+            "用户自身签名"
+          ],
+          "signer": true
+        },
+        {
+          "name": "user_business_nonce",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  98,
+                  117,
+                  115,
+                  105,
+                  110,
+                  101,
+                  115,
+                  115,
+                  95,
+                  110,
+                  111,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "business_project"
+              },
+              {
+                "kind": "account",
+                "path": "nonce_user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "business_project_authority",
+          "docs": [
+            "需要 project-authority 的签名"
+          ],
+          "signer": true,
+          "relations": [
+            "business_project"
+          ]
+        },
+        {
+          "name": "business_project",
+          "docs": [
+            "business-project账户"
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  117,
+                  115,
+                  105,
+                  110,
+                  101,
+                  115,
+                  115,
+                  95,
+                  112,
+                  114,
+                  111,
+                  106,
+                  101,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "nonce_project"
+              },
+              {
+                "kind": "account",
+                "path": "business_project.business_project_id",
+                "account": "BusinessProject"
+              }
+            ]
+          }
+        },
+        {
+          "name": "nonce_project",
+          "docs": [
+            "nonce Project账户, 验证 business nonce, 读取费用信息, 并收取费用"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  110,
+                  111,
+                  110,
+                  99,
+                  101,
+                  95,
+                  118,
+                  101,
+                  114,
+                  105,
+                  102,
+                  121,
+                  95,
+                  112,
+                  114,
+                  111,
+                  106,
+                  101,
+                  99,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "nonce_project.nonce_project_base",
+                "account": "NonceProject"
+              }
+            ]
+          },
+          "relations": [
+            "business_project"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "VerifyBusinessNonceParams"
+            }
+          }
+        }
+      ],
+      "returns": "u32"
+    }
+  ],
+  "accounts": [
+    {
+      "name": "BusinessProject",
+      "discriminator": [
+        32,
+        240,
+        27,
+        144,
+        35,
+        194,
+        102,
+        163
+      ]
+    },
+    {
+      "name": "NonceProject",
+      "discriminator": [
+        175,
+        80,
+        93,
+        205,
+        14,
+        252,
+        225,
+        50
+      ]
+    },
+    {
+      "name": "UserBusinessNonce",
+      "discriminator": [
+        243,
+        191,
+        178,
+        173,
+        198,
+        4,
+        237,
+        179
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ProjectNameTooLong",
+      "msg": "The project name is too long"
+    },
+    {
+      "code": 6001,
+      "name": "RunOutOfAdminSignature",
+      "msg": "run out of nonce project's admin signature"
+    },
+    {
+      "code": 6002,
+      "name": "NonceValueNotMatch",
+      "msg": "nonce value not match"
+    }
+  ],
+  "types": [
+    {
+      "name": "BusinessProject",
+      "docs": [
+        "业务工程的账户信息"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "business_project_id",
+            "docs": [
+              "业务工程的唯一ID"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "business_project_authority",
+            "docs": [
+              "授权账户",
+              "每次验证nonce需要该授权账户的签名"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce_project",
+            "docs": [
+              "关联的nonce-project"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeNonceProjectParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "business_fee",
+            "docs": [
+              "业务费用",
+              "每次注册新业务时需要支付的费用"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "user_fee",
+            "docs": [
+              "每次使用时需要支付的费用"
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "NonceProject",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nonce_project_admin",
+            "docs": [
+              "管理员账户",
+              "如果存在，则每次注册新的业务时，需要管理员签名"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "nonce_project_base",
+            "docs": [
+              "base Account"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "business_fee",
+            "docs": [
+              "业务费用",
+              "每次注册新业务时需要支付的费用, lamports"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "user_fee",
+            "docs": [
+              "每次使用时需要支付的费用, lamports"
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegisterBusinessProjectParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "project_id",
+            "docs": [
+              "业务工程的唯一ID"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserBusinessNonce",
+      "docs": [
+        "用户属于某个业务工程的nonce"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "is_initialized",
+            "docs": [
+              "标记本账户是否已经初始化过了，如果已经初始化过了，则不再初始化",
+              "使用独立标记，防止bug"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "nonce_value",
+            "docs": [
+              "用户的nonce值"
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "business_project",
+            "docs": [
+              "关联的业务工程"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "nonce_user",
+            "docs": [
+              "用户地址, 表示关联的用户账户"
+            ],
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "VerifyBusinessNonceParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nonce_value",
+            "type": "u32"
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "BUSINESS_PROJECT_SEED",
+      "type": "bytes",
+      "value": "[98, 117, 115, 105, 110, 101, 115, 115, 95, 112, 114, 111, 106, 101, 99, 116]"
+    },
+    {
+      "name": "NONCE_PROJECT_SEED",
+      "type": "bytes",
+      "value": "[110, 111, 110, 99, 101, 95, 118, 101, 114, 105, 102, 121, 95, 112, 114, 111, 106, 101, 99, 116]"
+    },
+    {
+      "name": "USER_BUSINESS_NONCE_SEED",
+      "type": "bytes",
+      "value": "[117, 115, 101, 114, 95, 98, 117, 115, 105, 110, 101, 115, 115, 95, 110, 111, 110, 99, 101]"
+    }
+  ]
+}

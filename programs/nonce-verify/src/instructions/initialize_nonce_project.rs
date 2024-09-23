@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::constants::NONCE_PROJECT_SEED;
 
 pub fn initialize_nonce_project(ctx: Context<InitializeNonceProjectAccounts>, params: InitializeNonceProjectParams) -> Result<()> {
-    msg!("initialize project");
+    msg!("initialize nonce project");
 
     ctx.accounts.nonce_project.set_inner(NonceProject {
         nonce_project_admin: ctx.accounts.nonce_project_admin.as_ref().map(|a| *a.key),
