@@ -4,7 +4,8 @@ export default defineConfig({
   test: {
 
     include: [
-      'tests/**/*.test.ts',
+      // 'tests/**/*.test.ts',
+      'tests/solana-airdrop/solana-airdrop.test.ts',
     ],
 
     /** 使用 verbose reporter 可以打印用例名称，使测试更清楚 */

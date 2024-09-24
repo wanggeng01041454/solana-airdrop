@@ -2,11 +2,12 @@ use anchor_lang::prelude::*;
 
 use anchor_lang::system_program;
 
-use crate::constants::{NONCE_PROJECT_SEED, BUSINESS_PROJECT_SEED, USER_BUSINESS_NONCE_SEED};
+use crate::constants::*;
 use crate::errors::NonceVerifyErrors;
 
 use crate::instructions::initialize_nonce_project::NonceProject;
 use crate::instructions::register_business_project::BusinessProject;
+use crate::instructions::init_user_business_nonce::UserBusinessNonceState;
 
 
 /// 验证业务nonce
@@ -16,16 +17,6 @@ pub fn verify_business_nonce(
     params: VerifyBusinessNonceParams,
 ) -> Result<u32> {
     msg!("verify user's business nonce");
-
-    // 如果是首次调用，对账户信息进行初始化
-    if !ctx.accounts.user_business_nonce.is_initialized {
-        ctx.accounts.user_business_nonce.set_inner(UserBusinessNonce {
-            is_initialized: true,
-            nonce_value: 0,
-            business_project: ctx.accounts.business_project.key(),
-            nonce_user: *ctx.accounts.nonce_user.key,
-        });
-    }
 
     // 检查是否要收取用户使用费用，配置了则收取
     // 一个需要关注的BUG： 如果用EOA账户收款，如果该账户原本的lamports为0，（由于fee很少），受到fee后，账户的lamports不足以支付rent,会导致本交易失败
@@ -49,31 +40,13 @@ pub fn verify_business_nonce(
         return Err(NonceVerifyErrors::NonceValueNotMatch.into());
     }
     cur_nonce_value += 1;
+    let cur_nonce_value = cur_nonce_value;
+
+    msg!("input nonce value: {}, current nonce value: {}", params.nonce_value, cur_nonce_value);
+    
     ctx.accounts.user_business_nonce.nonce_value = cur_nonce_value;
 
     Ok(cur_nonce_value)
-}
-
-
-/// 用户属于某个业务工程的nonce
-#[account]
-pub struct UserBusinessNonce {
-    /// 标记本账户是否已经初始化过了，如果已经初始化过了，则不再初始化
-    /// 使用独立标记，防止bug
-    pub is_initialized: bool, // 1 byte
-
-    /// 用户的nonce值
-    pub nonce_value: u32,
-
-    /// 关联的业务工程
-    pub business_project: Pubkey,
-
-    /// 用户地址, 表示关联的用户账户
-    pub nonce_user: Pubkey,
-}
-
-impl UserBusinessNonce {
-    const LEN: usize = 8 + 1 + 4 + 32 + 32;
 }
 
 #[derive(Accounts)]
@@ -87,22 +60,20 @@ pub struct VerifyBusinessNonceAccounts<'info> {
     #[account(mut)]
     pub user_fee_payer: Signer<'info>,
 
-    /// 用户自身签名
+    /// nonce用户, 消耗nonce需要用户签名签名
     pub nonce_user: Signer<'info>,
 
+    /// user-business-nonce账户中的nonce发生变化
     #[account(
-        init_if_needed,
-        payer = payer,
+        mut,
         seeds = [
             USER_BUSINESS_NONCE_SEED,
             business_project.key().as_ref(),
             nonce_user.key().as_ref()
         ],
         bump,
-        space = UserBusinessNonce::LEN
     )]
-    pub user_business_nonce: Account<'info, UserBusinessNonce>,
-
+    pub user_business_nonce: Box<Account<'info, UserBusinessNonceState>>,
 
     /// 需要 project-authority 的签名
     pub business_project_authority: Signer<'info>,

@@ -3,12 +3,12 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum AirdropErrors {
-    #[msg("The project name is too long")]
-    ProjectNameTooLong,
+    #[msg("Missing Ed25519 instruction before current instruction")]
+    MissingEd25519Instruction,
 
-    #[msg("run out of nonce project's admin signature")]
-    RunOutOfAdminSignature,
+    #[msg("Invalid Ed25519 instruction")]
+    InvalidEd25519Instruction,
 
-    #[msg("nonce value not match")]
-    NonceValueNotMatch,
+    #[msg("verify signature failed")]
+    SigVerificationFailed,
 }

@@ -10,7 +10,7 @@ pub fn initialize_airdrop(
 
     ctx.accounts.airdrop_project.set_inner(AirdropProject {
         airdrop_project_id: params.project_id.clone(),
-        airdrop_project_admin: params.admin.clone(),
+        airdrop_project_admin: params.project_admin.clone(),
     });
 
     Ok(())
@@ -57,5 +57,5 @@ pub struct InitializeAirdropProjectParams {
     pub project_id: Pubkey,
 
     /// airdrop的admin账户，所有的claim需要该账户签名
-    pub admin: Pubkey,
+    pub project_admin: Pubkey,
 }

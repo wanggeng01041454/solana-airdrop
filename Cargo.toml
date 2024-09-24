@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "programs/*"
-]
+, "rust_app/sign_checker"]
 resolver = "2"
 
 [profile.release]

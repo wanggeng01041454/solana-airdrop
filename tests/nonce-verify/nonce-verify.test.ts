@@ -23,7 +23,8 @@ import {
 import {
   initNonceProjectAndRegisterBusinessProject4Test,
   initNonceVerifyProject4Test,
-  registerBusinessProject4Test
+  registerBusinessProject4Test,
+  transferSol
 } from "../utils";
 import { aw } from "vitest/dist/chunks/reporters.WnPwkmgA";
 
@@ -81,13 +82,16 @@ describe("nonce-verify 合约测试", async () => {
       baseKeypair: baseKeypair,
       adminKeypair: adminKeypair,
       projectId: projectId,
-      projectAuthorityKeypair: projectAuthority
+      projectAuthorityPubkey: projectAuthority.publicKey
     });
 
     const nonceProjectAfterBalance = await connection.getBalance(nonceProjectPubkey);
 
     // 查询 business-project
-    const businessProjectAccount = await nonceVerifyProvider.getBusinessProjectAccount(baseKeypair.publicKey, projectId);
+    const businessProjectAccount = await nonceVerifyProvider.getBusinessProjectAccount({
+      nonceBase: baseKeypair.publicKey,
+      projectId: projectId
+    });
     console.log(`businessProjectAccount: ${JSON.stringify(businessProjectAccount, undefined, 2)}`);
 
     expect(nonceProjectBeforeBalance + businessFee).toBe(nonceProjectAfterBalance);
@@ -156,7 +160,10 @@ describe("nonce-verify 合约测试", async () => {
     const nonceProjectAfterBalance = await connection.getBalance(nonceProjectPubkey);
 
     // 查询 business-project
-    const businessProjectAccount = await nonceVerifyProvider.getBusinessProjectAccount(baseKeypair.publicKey, projectId);
+    const businessProjectAccount = await nonceVerifyProvider.getBusinessProjectAccount({
+      nonceBase: baseKeypair.publicKey,
+      projectId: projectId
+    });
     console.log(`businessProjectAccount: ${JSON.stringify(businessProjectAccount, undefined, 2)}`);
 
     expect(nonceProjectBeforeBalance + initializeProjectParams.businessFee).toBe(nonceProjectAfterBalance);
@@ -180,7 +187,7 @@ describe("nonce-verify 合约测试", async () => {
       baseKeypair: baseKeypair,
       adminKeypair: adminKeypair,
       projectId: projectId,
-      projectAuthorityKeypair: projectAuthority
+      projectAuthorityPubkey: projectAuthority.publicKey
     });
 
     const businessProject = nonceVerifyProvider.findBusinessProjectAddress({
@@ -190,16 +197,44 @@ describe("nonce-verify 合约测试", async () => {
 
     // 校验alice的nonce变化
     const aliceKeypair = Keypair.generate();
+
+    // 给 alice 转钱，以便alice可以支付nonce-verify的费用
+    {
+      const txId = await transferSol({
+        connection: connection,
+        fromKeypair: GlobalPayerKeypair,
+        toPubkey: aliceKeypair.publicKey,
+        amountInSol: 1
+      });
+      console.log(`transfer-sol transaction txId: ${txId}, has finitialized`);
+    }
+
+    // 首先初始化alice的business-nonce
+    const txId0 = await nonceVerifyProvider.initUserBusinessNonceStateAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+
+      payer: GlobalPayerKeypair.publicKey,
+      payerKeypair: GlobalPayerKeypair,
+
+      user: aliceKeypair.publicKey,
+      userKeypair: aliceKeypair,
+
+      businessProject: businessProject,
+    });
+    console.log(`init-user-business-nonce-state transaction txId: ${txId0}, has finitialized`);
+
     async function getAliceNonce() {
-      return await nonceVerifyProvider.getUserBusinessNonce({
+      return await nonceVerifyProvider.getUserBusinessNonceValue({
         userPubkey: aliceKeypair.publicKey,
         businessProject: businessProject
       });
     }
 
     // alice的nonce初始值
-    let nonce = await getAliceNonce();
-    expect(nonce).toBe(0);
+    let nonceInfo = await getAliceNonce();
+    expect(nonceInfo).toBe(0);
 
     // 增加alice的nonce
     async function increaseAliceNonce() {
@@ -214,7 +249,7 @@ describe("nonce-verify 合约测试", async () => {
         user: aliceKeypair.publicKey,
         userKeypair: aliceKeypair,
 
-        curNonceValue: nonce,
+        curNonceValue: nonceInfo.nonceValue,
 
         userFeePayer: GlobalPayerKeypair.publicKey,
         userFeePayerKeypair: GlobalPayerKeypair,
@@ -230,13 +265,13 @@ describe("nonce-verify 合约测试", async () => {
     }
     await increaseAliceNonce();
 
-    nonce = await getAliceNonce();
-    expect(nonce).toBe(1);
+    nonceInfo = await getAliceNonce();
+    expect(nonceInfo).toBe(1);
 
     // 增加alice的nonce
     await increaseAliceNonce();
-    nonce = await getAliceNonce();
-    expect(nonce).toBe(2);
+    nonceInfo = await getAliceNonce();
+    expect(nonceInfo).toBe(2);
   });
 });
 

@@ -2,16 +2,22 @@ import {
   Keypair,
   PublicKey
 } from "@solana/web3.js";
+
 import * as anchor from "@coral-xyz/anchor";
+
 import {
   InitializeNonceProjectActionParams,
   NonceVerifyProvider,
   RegisterBusinessProjectActionParams
 } from "../api/NonceVerifyProvider";
+
 import {
   BuildType,
   DEFAULT_CU_FACTOR
 } from "../api/baseTypes";
+import { mySendAndFinalizeTransaction } from "../api/utils";
+
+import { spawn } from 'child_process';
 
 /**
  * @description 专门用于测试的初始化 NonceVerifyProject
@@ -67,9 +73,9 @@ export async function registerBusinessProject4Test(params: {
   baseKeypair: Keypair,
   adminKeypair?: Keypair,
   projectId: PublicKey,
-  projectAuthorityKeypair: Keypair,
+  projectAuthorityPubkey: PublicKey,
 }): Promise<string> {
-  const { provider, pyaerKeypair, baseKeypair, adminKeypair, projectId, projectAuthorityKeypair } = params;
+  const { provider, pyaerKeypair, baseKeypair, adminKeypair, projectId, projectAuthorityPubkey } = params;
 
   const registerBusinessProjectParams: RegisterBusinessProjectActionParams = {
     buildType: BuildType.SendAndFinalizeTx,
@@ -77,7 +83,7 @@ export async function registerBusinessProject4Test(params: {
     cuFactor: DEFAULT_CU_FACTOR,
 
     projectId: projectId,
-    projectAuthority: projectAuthorityKeypair.publicKey,
+    projectAuthority: projectAuthorityPubkey,
 
     payer: pyaerKeypair.publicKey,
     payerKeypair: pyaerKeypair,
@@ -112,9 +118,9 @@ export async function initNonceProjectAndRegisterBusinessProject4Test(params: {
   businessFee?: number,
 
   projectId: PublicKey,
-  projectAuthorityKeypair: Keypair,
+  projectAuthorityPubkey: PublicKey,
 }): Promise<{ txId1: string, txId2: string }> {
-  const { provider, pyaerKeypair, baseKeypair, adminKeypair, userFee, businessFee, projectId, projectAuthorityKeypair } = params;
+  const { provider, pyaerKeypair, baseKeypair, adminKeypair, userFee, businessFee, projectId, projectAuthorityPubkey } = params;
 
   const txId1 = await initNonceVerifyProject4Test({
     provider,
@@ -131,8 +137,72 @@ export async function initNonceProjectAndRegisterBusinessProject4Test(params: {
     baseKeypair,
     adminKeypair,
     projectId,
-    projectAuthorityKeypair,
+    projectAuthorityPubkey,
   });
 
   return { txId1, txId2 };
 }
+
+
+export async function transferSol(params: {
+  connection: anchor.web3.Connection,
+  fromKeypair: Keypair,
+  toPubkey: PublicKey,
+  amountInSol: number
+}): Promise<string> {
+  const { connection, fromKeypair, toPubkey, amountInSol } = params;
+
+  const ix = anchor.web3.SystemProgram.transfer({
+    fromPubkey: fromKeypair.publicKey,
+    toPubkey: toPubkey,
+    lamports: amountInSol * 10 ** 9
+  });
+
+  const txId = await mySendAndFinalizeTransaction({
+    connection: connection,
+    ixs: [ix],
+    payer: fromKeypair.publicKey,
+    cuPrice: 1 * 10 ** 6,
+    signers: [fromKeypair]
+  });
+
+  return txId
+}
+
+/**
+ * @description 运行一个命令行程序，并获取其标准输出
+ * @param cmdPath 
+ * @param args 
+ * @returns 
+ */
+export function runAppAndGetStdout(cmdPath: string, args: string[]): Promise<string> {
+
+  return new Promise((resolve, reject) => {
+      const child = spawn(cmdPath, args);
+      console.log(`run cmd: ${cmdPath} ${args.join(' ')}`);
+
+      let output = '';
+      let errorOutput = '';
+
+      // 获取标准输出
+      child.stdout.on('data', (data) => {
+          output += data.toString();
+          // console.log(`stdout: ${data}`);
+      });
+
+      // 获取标准错误输出
+      child.stderr.on('data', (data) => {
+          errorOutput += data.toString();
+      });
+
+      // 进程结束时的处理
+      child.on('close', (code) => {
+          if (code === 0) {
+              resolve(output); // 返回标准输出
+          } else {
+              reject(new Error(`子进程退出，退出码: ${code}\n错误输出: ${errorOutput}`));
+          }
+      });
+  });
+}
+

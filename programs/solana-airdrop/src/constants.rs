@@ -1,11 +1,10 @@
-use anchor_lang::constant;
 
-#[constant]
-pub const AIRDROP_PROJECT_SEED : &[u8] = b"airdrop_project";
 
-#[constant]
-pub const AIRDROP_MINT_AUTHORITY_SEED : &[u8] = b"airdrop_mint_authority";
+pub const AIRDROP_PROJECT_SEED : &[u8] = b"ad_project";
 
-#[constant]
-pub const AIRDROP_NONCE_VERIFY_BUSINESS_PROJECT_SEED : &[u8] = b"airdrop_nonce_verify_business_project";
+
+pub const AIRDROP_MINT_AUTHORITY_SEED : &[u8] = b"ad_mint_auth";
+
+
+pub const AIRDROP_NONCE_VERIFY_BUSINESS_PROJECT_SEED : &[u8] = b"ad_nv_biz_prj";
 

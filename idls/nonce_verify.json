@@ -8,6 +8,94 @@
   },
   "instructions": [
     {
+      "name": "init_user_business_nonce",
+      "docs": [
+        "初始化用户的业务nonce"
+      ],
+      "discriminator": [
+        86,
+        167,
+        184,
+        175,
+        17,
+        200,
+        207,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "创建账户费用-支付账户"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "nonce_user",
+          "docs": [
+            "用户自身签名"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "user_business_nonce",
+          "docs": [
+            "用户自行支付 business 的创建费用，该费用可以被用户回收"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114,
+                  95,
+                  98,
+                  117,
+                  115,
+                  105,
+                  110,
+                  101,
+                  115,
+                  115,
+                  95,
+                  110,
+                  111,
+                  110,
+                  99,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "business_project"
+              },
+              {
+                "kind": "account",
+                "path": "nonce_user"
+              }
+            ]
+          }
+        },
+        {
+          "name": "business_project",
+          "docs": [
+            "business-project账户"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initialize_nonce_project",
       "docs": [
         "初始化-nonce-verify",
@@ -258,12 +346,15 @@
         {
           "name": "nonce_user",
           "docs": [
-            "用户自身签名"
+            "nonce用户, 消耗nonce需要用户签名签名"
           ],
           "signer": true
         },
         {
           "name": "user_business_nonce",
+          "docs": [
+            "user-business-nonce账户中的nonce发生变化"
+          ],
           "writable": true,
           "pda": {
             "seeds": [
@@ -442,16 +533,16 @@
       ]
     },
     {
-      "name": "UserBusinessNonce",
+      "name": "UserBusinessNonceState",
       "discriminator": [
-        243,
-        191,
-        178,
-        173,
-        198,
-        4,
-        237,
-        179
+        71,
+        3,
+        148,
+        240,
+        214,
+        102,
+        62,
+        0
       ]
     }
   ],
@@ -603,21 +694,13 @@
       }
     },
     {
-      "name": "UserBusinessNonce",
+      "name": "UserBusinessNonceState",
       "docs": [
         "用户属于某个业务工程的nonce"
       ],
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "is_initialized",
-            "docs": [
-              "标记本账户是否已经初始化过了，如果已经初始化过了，则不再初始化",
-              "使用独立标记，防止bug"
-            ],
-            "type": "bool"
-          },
           {
             "name": "nonce_value",
             "docs": [
@@ -653,23 +736,6 @@
           }
         ]
       }
-    }
-  ],
-  "constants": [
-    {
-      "name": "BUSINESS_PROJECT_SEED",
-      "type": "bytes",
-      "value": "[98, 117, 115, 105, 110, 101, 115, 115, 95, 112, 114, 111, 106, 101, 99, 116]"
-    },
-    {
-      "name": "NONCE_PROJECT_SEED",
-      "type": "bytes",
-      "value": "[110, 111, 110, 99, 101, 95, 118, 101, 114, 105, 102, 121, 95, 112, 114, 111, 106, 101, 99, 116]"
-    },
-    {
-      "name": "USER_BUSINESS_NONCE_SEED",
-      "type": "bytes",
-      "value": "[117, 115, 101, 114, 95, 98, 117, 115, 105, 110, 101, 115, 115, 95, 110, 111, 110, 99, 101]"
     }
   ]
 }

@@ -30,6 +30,13 @@ pub mod nonce_verify {
         instructions::register_business_project(ctx, params)
     }
 
+    /// 初始化用户的业务nonce
+    pub fn init_user_business_nonce(
+        ctx: Context<InitUserBusinessNonceAccounts>,
+    ) -> Result<()> {
+        instructions::init_user_business_nonce(ctx)
+    }
+
     /// 验证业务nonce
     pub fn verify_business_nonce(
         ctx: Context<VerifyBusinessNonceAccounts>,

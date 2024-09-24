@@ -1,6 +1,9 @@
 use anchor_lang::prelude::*;
 
-use anchor_lang::solana_program::{ed25519_program, instruction, program};
+use anchor_lang::solana_program::ed25519_program;
+use anchor_lang::solana_program::sysvar::instructions::{
+    load_current_index_checked, load_instruction_at_checked, ID as SYSVAR_IX_ID,
+};
 
 use anchor_spl::token;
 use anchor_spl::{
@@ -14,6 +17,7 @@ use crate::outer_program::nonce_verify::{
 };
 
 use crate::constants::*;
+use crate::errors::*;
 use crate::instructions::AirdropProject;
 
 pub fn claim_ft(ctx: Context<ClaimFtAccounts>, params: ClaimFtParams) -> Result<()> {
@@ -34,6 +38,10 @@ pub fn claim_ft(ctx: Context<ClaimFtAccounts>, params: ClaimFtParams) -> Result<
 /// 校验 nonce 实现
 fn verify_nonce(ctx: &Context<ClaimFtAccounts>, params: &ClaimFtParams) -> Result<()> {
     msg!("verify nonce");
+
+    // let nonce_value = ctx.accounts.user_business_nonce.as_ref().nonce_value;
+    // msg!("nonce_value: {}, input_nonce: {}", nonce_value, params.nonce);
+
     // 获取 pda 账户对应的seeds, 以及进行 cpi 调用，参看：https://github.com/coral-xyz/anchor/blob/v0.30.1/docs/src/pages/docs/pdas.md
     // 取出 pda 账户对应的 bump
     let business_project_authority_bump = ctx.bumps.business_project_authority;
@@ -99,43 +107,79 @@ fn verify_sign(ctx: &Context<ClaimFtAccounts>, params: &ClaimFtParams) -> Result
         .airdrop_project_admin
         .as_ref();
 
-    verify_sign_use_ed25519_program(sign_data, &params.signature, pk)
+    verify_sign_data_used_by_ed25519_program(ctx, sign_data, &params.signature, pk)
 }
 
 /// 使用 ed25519-program 验证签名
-fn verify_sign_use_ed25519_program(msg: &[u8], signature: &[u8], pk: &[u8]) -> Result<()> {
-    let mut ix_data = vec![];
+/// 实际上，ed25519-program 在前一个指令中被调用，此处验证： 调用 ed25519-program 时，指令参数是否和预期的一致， 一致则认为签名验证通过。
+fn verify_sign_data_used_by_ed25519_program(
+    ctx: &Context<ClaimFtAccounts>,
+    msg: &[u8],
+    signature: &[u8],
+    pk: &[u8],
+) -> Result<()> {
+    msg!("verify sign data used by ed25519-program");
+    // 保证本指令的前一个指令是 ed25519-program 的调用
+    let ix_sysvar_account_info = ctx.accounts.ix_sysvar.to_account_info();
+    let current_index = load_current_index_checked(&ix_sysvar_account_info)?;
+    if current_index == 0 {
+        return Err(AirdropErrors::MissingEd25519Instruction.into());
+    }
+    let ed25519_instruction =
+        load_instruction_at_checked((current_index - 1) as usize, &ix_sysvar_account_info)?;
 
-    let public_key_offset: u16 = 2 * 1 + 7 * 2; // size_of<u8> == 1, size_of<u16> == 2
-    let signature_offset: u16 = public_key_offset + (pk.len() as u16); // public_key size == 32
-    let message_offset: u16 = signature_offset + (signature.len() as u16); // signature size == 64
+    // The program id we expect, // With no context accounts, // And data of this size
+    if ed25519_instruction.program_id != ed25519_program::ID
+        || ed25519_instruction.accounts.len() != 0
+        || ed25519_instruction.data.len() != (16 + 64 + 32 + msg.len())
+    {
+        return Err(AirdropErrors::SigVerificationFailed.into()); // Otherwise, we can already throw err
+    }
 
-    ix_data.extend_from_slice(&[1]); // num of signaturs
-    ix_data.extend_from_slice(&[0]); // padding
+    // 解析指令数据，要求它和预期的一致
+    let ix_data = ed25519_instruction.data;
 
-    ix_data.extend_from_slice(signature_offset.to_le_bytes().as_ref()); // signature offset
-    ix_data.extend_from_slice(u16::MAX.to_le_bytes().as_ref()); // signature instruction index
+    let num_signatures = &[ix_data[0]]; // Byte  0
+    let padding = &[ix_data[1]]; // Byte  1
+    let signature_offset = &ix_data[2..=3]; // Bytes 2,3
+    let signature_instruction_index = &ix_data[4..=5]; // Bytes 4,5
+    let public_key_offset = &ix_data[6..=7]; // Bytes 6,7
+    let public_key_instruction_index = &ix_data[8..=9]; // Bytes 8,9
+    let message_data_offset = &ix_data[10..=11]; // Bytes 10,11
+    let message_data_size = &ix_data[12..=13]; // Bytes 12,13
+    let message_instruction_index = &ix_data[14..=15]; // Bytes 14,15
 
-    ix_data.extend_from_slice(public_key_offset.to_le_bytes().as_ref()); // public key offset
-    ix_data.extend_from_slice(u16::MAX.to_le_bytes().as_ref()); // public key instruction index
+    let data_pubkey = &ix_data[16..16 + 32]; // Bytes 16..16+32
+    let data_sig = &ix_data[48..48 + 64]; // Bytes 48..48+64
+    let data_msg = &ix_data[112..]; // Bytes 112..end
 
-    ix_data.extend_from_slice(message_offset.to_le_bytes().as_ref()); // message offset
-    ix_data.extend_from_slice(msg.len().to_le_bytes().as_ref()); // message length
-    ix_data.extend_from_slice(u16::MAX.to_le_bytes().as_ref()); // message instruction index
+    // Expected values
+    let exp_public_key_offset: u16 = 16; // 2*u8 + 7*u16
+    let exp_signature_offset: u16 = exp_public_key_offset + pk.len() as u16;
+    let exp_message_data_offset: u16 = exp_signature_offset + signature.len() as u16;
+    let exp_num_signatures: u8 = 1;
+    let exp_message_data_size: u16 = msg.len().try_into().unwrap();
 
-    ix_data.extend_from_slice(pk); // public key
-    ix_data.extend_from_slice(signature); // signature
-    ix_data.extend_from_slice(msg); // message
+    // Header and Arg Checks
 
-    let ix_data = ix_data.as_slice();
+    // Header
+    if num_signatures != &exp_num_signatures.to_le_bytes()
+        || padding != &[0]
+        || signature_offset != &exp_signature_offset.to_le_bytes()
+        || signature_instruction_index != &u16::MAX.to_le_bytes()
+        || public_key_offset != &exp_public_key_offset.to_le_bytes()
+        || public_key_instruction_index != &u16::MAX.to_le_bytes()
+        || message_data_offset != &exp_message_data_offset.to_le_bytes()
+        || message_data_size != &exp_message_data_size.to_le_bytes()
+        || message_instruction_index != &u16::MAX.to_le_bytes()
+    {
+        return Err(AirdropErrors::SigVerificationFailed.into());
+    }
 
-    let program_id = ed25519_program::id();
-    let accounts = vec![];
-    let ix = instruction::Instruction::new_with_bytes(program_id, ix_data, accounts);
-
-    let account_infos = vec![];
-
-    program::invoke(&ix, &account_infos)?;
+    // Arguments
+    if data_pubkey != pk || data_msg != msg || data_sig != signature {
+        return Err(AirdropErrors::SigVerificationFailed.into());
+    }
 
     Ok(())
 }
@@ -145,11 +189,9 @@ fn do_mint_ft(ctx: &Context<ClaimFtAccounts>, params: &ClaimFtParams) -> Result<
     msg!("mint ft-token");
 
     let mint_authority_bump = ctx.bumps.mint_authority;
-    let airdrop_project_pubkey = ctx.accounts.airdrop_project.key();
     let mint_pubkey = ctx.accounts.mint.key();
     let mint_authority_seeds = &[
         AIRDROP_MINT_AUTHORITY_SEED,
-        airdrop_project_pubkey.as_ref(),
         mint_pubkey.as_ref(),
         &[mint_authority_bump],
     ];
@@ -194,6 +236,8 @@ pub struct ClaimFtAccounts<'info> {
     pub airdrop_project: Box<Account<'info, AirdropProject>>,
 
     // mint 账户， 用于申领的代币地址， mintAccount
+    // fixme: mint账户必须被标记为mut, 否则会报错, 因为mint时，修改了mint账户的supply
+    #[account(mut)]
     pub mint: Box<Account<'info, Mint>>,
 
     // mint 账户的权限管理账户, 为用户铸造时，需要该账户的签名
@@ -201,7 +245,6 @@ pub struct ClaimFtAccounts<'info> {
     #[account(
         seeds = [
             AIRDROP_MINT_AUTHORITY_SEED,
-            airdrop_project.key().as_ref(),
             mint.key().as_ref(),
         ],
         bump,
@@ -241,7 +284,9 @@ pub struct ClaimFtAccounts<'info> {
     pub business_project_authority: AccountInfo<'info>,
 
     // user business nonce 账户
-    pub user_business_nonce: Box<Account<'info, nonce_verify_accounts::UserBusinessNonce>>,
+    // fixme: user_business_nonce账户必须被标记为mut, 因为nonce验证时，修改了nonce值
+    #[account(mut)]
+    pub user_business_nonce: Box<Account<'info, nonce_verify_accounts::UserBusinessNonceState>>,
 
     // 系统程序
     pub system_program: Program<'info, System>,
@@ -250,6 +295,13 @@ pub struct ClaimFtAccounts<'info> {
 
     // nonce 服务程序
     pub nonce_program: Program<'info, NonceVerify>,
+
+    /// CHECK: The address check is needed because otherwise
+    /// the supplied Sysvar could be anything else.
+    /// The Instruction Sysvar has not been implemented
+    /// in the Anchor framework yet, so this is the safe approach.
+    #[account(address = SYSVAR_IX_ID)]
+    pub ix_sysvar: AccountInfo<'info>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Default, Debug, Clone)]
