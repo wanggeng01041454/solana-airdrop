@@ -302,6 +302,117 @@ describe("solana-airdrop 合约测试", async () => {
     nonceInfo = await getAliceNonce();
     console.log(`nonceInfo: ${JSON.stringify(nonceInfo, undefined, 2)}`);
     expect(nonceInfo.nonceValue).toBe(2);
+
+    // 调整数据后，签名验证不通过， 
+    // 情况1： signature 和 signData 不匹配
+    {
+      let err = undefined
+      try {
+        const signData = await airdropProvider.buildClaimFtSignData({
+          tokenAmount: amount,
+          mintAccountPubkey: mintAddress,
+          claimer: userAddress,
+          airdropProjectPubkey: airdropProjectAddress,
+          nonceVerifyBusinessProjectPubkey: nonceBusinessProjectAddress
+        });
+  
+        const signature = AirdropUtils.sign(signData, airdropProjectAdminKeypair);
+
+        const signData2 = await airdropProvider.buildClaimFtSignData({
+          tokenAmount: new BN(100),
+          mintAccountPubkey: mintAddress,
+          claimer: userAddress,
+          airdropProjectPubkey: airdropProjectAddress,
+          nonceVerifyBusinessProjectPubkey: nonceBusinessProjectAddress
+        });
+  
+        const signature2 = AirdropUtils.sign(signData2, airdropProjectAdminKeypair);
+  
+        const txId = await airdropProvider.claimFtAction({
+          buildType: BuildType.SendAndFinalizeTx,
+          cuPrice: 1 * 10 ** 6,
+          cuFactor: DEFAULT_CU_FACTOR,
+  
+          payer: GlobalPayerKeypair.publicKey,
+          payerKeypair: GlobalPayerKeypair,
+  
+          nonceFeePayer: aliceKeypair.publicKey,
+          nonceFeePayerKeypair: aliceKeypair,
+  
+          claimer: aliceKeypair.publicKey,
+          claimerKeypair: aliceKeypair,
+  
+          spaceFeePayer: aliceKeypair.publicKey,
+          spaceFeePayerKeypair: aliceKeypair,
+  
+          airdropProjectPubkey: airdropProjectAddress,
+  
+          mintAccountPubkey: mintAddress,
+          nonceVerifyBusinessProjectPubkey: nonceBusinessProjectAddress,
+  
+          tokenAmount: amount,
+          signData: signData,
+          signature: signature2
+        });
+      } catch (error) {
+        console.log('=======使签名数据和签名不匹配，期望抛出异常, catch error.');
+        console.log(error.message.toString());
+        err = error;
+      }
+      expect(err).toBeDefined();
+    }
+
+   // 调整数据后，签名验证不通过， 
+    // 情况2： 合成数据 和 signData 不匹配
+    {
+      let err = undefined
+      try {
+        const signData = await airdropProvider.buildClaimFtSignData({
+          tokenAmount: amount,
+          mintAccountPubkey: mintAddress,
+          claimer: userAddress,
+          airdropProjectPubkey: airdropProjectAddress,
+          nonceVerifyBusinessProjectPubkey: nonceBusinessProjectAddress
+        });
+  
+        const signature = AirdropUtils.sign(signData, airdropProjectAdminKeypair);
+
+  
+        const txId = await airdropProvider.claimFtAction({
+          buildType: BuildType.SendAndFinalizeTx,
+          cuPrice: 1 * 10 ** 6,
+          cuFactor: DEFAULT_CU_FACTOR,
+  
+          payer: GlobalPayerKeypair.publicKey,
+          payerKeypair: GlobalPayerKeypair,
+  
+          nonceFeePayer: aliceKeypair.publicKey,
+          nonceFeePayerKeypair: aliceKeypair,
+  
+          claimer: aliceKeypair.publicKey,
+          claimerKeypair: aliceKeypair,
+  
+          spaceFeePayer: aliceKeypair.publicKey,
+          spaceFeePayerKeypair: aliceKeypair,
+  
+          airdropProjectPubkey: airdropProjectAddress,
+  
+          mintAccountPubkey: mintAddress,
+          nonceVerifyBusinessProjectPubkey: nonceBusinessProjectAddress,
+  
+          tokenAmount: new BN(20),
+          signData: signData,
+          signature: signature
+        });
+      } catch (error) {
+        console.log('=======使签名数据和合成数据不匹配，期望抛出异常');
+        console.log(error.message.toString());
+        err = error;
+      }
+      expect(err).toBeDefined();
+    }
+
+
   })
 
 });

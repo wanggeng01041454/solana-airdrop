@@ -234,7 +234,7 @@ describe("nonce-verify 合约测试", async () => {
 
     // alice的nonce初始值
     let nonceInfo = await getAliceNonce();
-    expect(nonceInfo).toBe(0);
+    expect(nonceInfo.nonceValue).toBe(0);
 
     // 增加alice的nonce
     async function increaseAliceNonce() {
@@ -266,12 +266,12 @@ describe("nonce-verify 合约测试", async () => {
     await increaseAliceNonce();
 
     nonceInfo = await getAliceNonce();
-    expect(nonceInfo).toBe(1);
+    expect(nonceInfo.nonceValue).toBe(1);
 
     // 增加alice的nonce
     await increaseAliceNonce();
     nonceInfo = await getAliceNonce();
-    expect(nonceInfo).toBe(2);
+    expect(nonceInfo.nonceValue).toBe(2);
   });
 });
 
