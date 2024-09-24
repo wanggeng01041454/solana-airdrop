@@ -189,9 +189,11 @@ fn do_mint_ft(ctx: &Context<ClaimFtAccounts>, params: &ClaimFtParams) -> Result<
     msg!("mint ft-token");
 
     let mint_authority_bump = ctx.bumps.mint_authority;
+    let airdrop_project_pubkey = ctx.accounts.airdrop_project.key();
     let mint_pubkey = ctx.accounts.mint.key();
     let mint_authority_seeds = &[
         AIRDROP_MINT_AUTHORITY_SEED,
+        airdrop_project_pubkey.as_ref(),
         mint_pubkey.as_ref(),
         &[mint_authority_bump],
     ];
@@ -245,6 +247,7 @@ pub struct ClaimFtAccounts<'info> {
     #[account(
         seeds = [
             AIRDROP_MINT_AUTHORITY_SEED,
+            airdrop_project.key().as_ref(),
             mint.key().as_ref(),
         ],
         bump,

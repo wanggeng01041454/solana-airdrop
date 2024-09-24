@@ -151,10 +151,14 @@ export class SolanaAirdropProvider {
    * 需要将 mint-account 的 authority 设置为该地址， 才能使用空投合约对该 mint-account 进行空投
    * @param params
    */
-  public findAirdropMintAuthorityAddress(mintAccountPubkey: PublicKey): PublicKey {
+  public findAirdropMintAuthorityAddress(params: {
+    airdropProjectPubkey: PublicKey,
+    mintAccountPubkey: PublicKey
+  }): PublicKey {
     return PublicKey.findProgramAddressSync([
       AIRDROP_MINT_AUTHORITY_SEED,
-      mintAccountPubkey.toBuffer()
+      params.airdropProjectPubkey.toBuffer(),
+      params.mintAccountPubkey.toBuffer()
     ], this.program.programId)[0];
   }
 
@@ -331,30 +335,30 @@ export class SolanaAirdropProvider {
       const publicKeyOffset = 2 * 1 + 7 * 2; // size_of<u8> == 1, size_of<u16> == 2
       const signatureOffset = publicKeyOffset + PubkeyLen; // public_key size == 32
       const messageOffset = signatureOffset + SignatureLen; // signature size == 64
-  
+
       const ixData: Buffer = Buffer.alloc(messageOffset + params.signData.length);
-      
+
       // 填充数据
       ixData.writeUInt8(1, 0); // num of signatures
       ixData.writeUInt8(0, 1); // padding
-  
+
       ixData.writeUInt16LE(signatureOffset, 2); // signature offset
       ixData.writeUInt16LE(0xFFFF, 4); // signature instruction index
-  
+
       ixData.writeUInt16LE(publicKeyOffset, 6); // public key offset
       ixData.writeUInt16LE(0xFFFF, 8); // public key instruction index
-  
+
       ixData.writeUInt16LE(messageOffset, 10); // message offset
       ixData.writeUInt16LE(params.signData.length, 12); // message length
       ixData.writeUInt16LE(0xFFFF, 14); // message instruction index
-  
+
       // 添加公钥、签名和消息
       ixData.set(airdropProjectAccount.airdropProjectAdmin.toBuffer(), publicKeyOffset);
       ixData.set(params.signature, signatureOffset);
       ixData.set(params.signData, messageOffset);
 
       const ed25519Ix = new TransactionInstruction({
-        keys:[],
+        keys: [],
         programId: Ed25519Program.programId,
         data: ixData
       });

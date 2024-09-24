@@ -95,7 +95,10 @@ describe("solana-airdrop 合约测试", async () => {
   }
 
   const mintAccountKeypair = Keypair.generate();
-  const mintAuthorityPubkey = airdropProvider.findAirdropMintAuthorityAddress(mintAccountKeypair.publicKey);
+  const mintAuthorityPubkey = airdropProvider.findAirdropMintAuthorityAddress({
+    airdropProjectPubkey: airdropProjectAddress,
+    mintAccountPubkey: mintAccountKeypair.publicKey
+  });
   console.log(`mintAuthorityPubkey: ${mintAuthorityPubkey.toBase58()}`);
 
   const tokenDecimals = 8;
