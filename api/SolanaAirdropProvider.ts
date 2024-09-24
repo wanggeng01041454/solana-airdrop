@@ -115,6 +115,24 @@ export interface TransferMintAuthorityActionParams extends BaseActionParams {
   newMintAuthority: PublicKey
 }
 
+/**
+ * @description 关闭 airdrop 项目的参数
+ * 特别说明： 所有的 *Keypair参数，都是可选的，只有在 buildType 为 SendAndFinalizeTx 或 SendAndConfirmTx 时，才需要传入
+ */
+export interface CloseAirdropProjectActionParams extends BaseActionParams {
+  // 交易费支付者
+  payer: PublicKey,
+  payerKeypair?: Keypair,
+
+  // 关闭账户时，资金接收者
+  receiverPubkey: PublicKey,
+
+  // 相关的 airdrop 项目
+  airdropProjectPubkey: PublicKey,
+  // airdrop project 的管理员, 需要它的签名
+  airdropProjectAdminKeypair?: Keypair,
+}
+
 
 const AIRDROP_PROJECT_SEED = Buffer.from("ad_project");
 const AIRDROP_MINT_AUTHORITY_SEED = Buffer.from("ad_mint_auth");
@@ -444,6 +462,37 @@ export class SolanaAirdropProvider {
     return await buildActionResult(buildParams);
   }
 
+
+  /**
+   * @description 关闭 airdrop 项目
+   * @param params 
+   * @returns 
+   */
+  public async closeAirdropProjectAction(params: CloseAirdropProjectActionParams): Promise<ActionResult> {
+
+    // 构造指令
+    const ix = await this.program.methods
+      .closeAirdrop()
+      .accounts({
+        payer: params.payer,
+        receiver: params.receiverPubkey,
+        airdropProject: params.airdropProjectPubkey,
+      }).instruction();
+
+    const buildParams: BuildActionResultParams = {
+      buildType: params.buildType,
+      cuPrice: params.cuPrice,
+      cuFactor: params.cuFactor,
+
+      connection: this.connection,
+      ixs: [ix],
+      payer: params.payer,
+      signers: [params.payerKeypair, params.airdropProjectAdminKeypair]
+    };
+
+    return await buildActionResult(buildParams);
+  }
+  
 }
 
 

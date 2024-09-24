@@ -34,4 +34,8 @@ pub mod solana_airdrop {
         instructions::transfer_mint_authority(ctx, params)
     }
 
+    /// 关闭-airdrop-project
+    pub fn close_airdrop(ctx: Context<CloseAirdropProjectAccounts>) -> Result<()> {
+        instructions::close_airdrop(ctx)
+    }
 }

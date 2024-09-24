@@ -187,7 +187,7 @@ describe("solana-airdrop 合约测试", async () => {
   });
 
 
-  test("申领空投测试- 空投前 & 1次空投 & 2次空投", async () => {
+  test("申领空投测试- 空投前 & 1次空投 & 2次空投 & 转移mint-authority & 关闭airdrop", async () => {
     // 先获取 nonce-verify-business-project 的信息
     const businessProjectAccount = await nonceVerifyProvider.getBusinessProjectAccount(businessProjectAddress);
     console.log(`businessProjectAddress: ${businessProjectAddress.toBase58()}`);
@@ -439,6 +439,28 @@ describe("solana-airdrop 合约测试", async () => {
       printMintInfo(mintAccountInfo);
 
       expect(mintAccountInfo.mintAuthority.toBase58()).toBe(newMintAuthorityKeypair.publicKey.toBase58());
+    }
+
+    // 在所有测试之后，关闭 air-drop-project
+    const txIdCloseAirdropProject = await airdropProvider.closeAirdropProjectAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+
+      payer: GlobalPayerKeypair.publicKey,
+      payerKeypair: GlobalPayerKeypair,
+
+      receiverPubkey: airdropProjectAdminKeypair.publicKey,
+
+      airdropProjectPubkey: airdropProjectAddress,
+      airdropProjectAdminKeypair: airdropProjectAdminKeypair,
+    });
+
+    console.log(`close-airdrop-project transaction txId: ${txIdCloseAirdropProject}, has finitialized`);
+    {
+      console.log(`airdropProjectAddress: ${airdropProjectAddress.toBase58()} must be have no account`);
+      const airdropProjectAccountInfo = await connection.getAccountInfo(airdropProjectAddress);
+      expect(airdropProjectAccountInfo).toBeNull();
     }
 
   })
