@@ -415,7 +415,34 @@ describe("solana-airdrop 合约测试", async () => {
       expect(err).toBeDefined();
     }
 
+    // 在正确性之后，再测试转移 mint-authority
+    const newMintAuthorityKeypair = Keypair.generate();
+    const txIdTransferMintAuthority = await airdropProvider.transferMintAuthorityAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+
+      payer: GlobalPayerKeypair.publicKey,
+      payerKeypair: GlobalPayerKeypair,
+
+      airdropProjectPubkey: airdropProjectAddress,
+      airdropProjectAdminKeypair: airdropProjectAdminKeypair,
+
+      mintAccountPubkey: mintAccountKeypair.publicKey,
+
+      newMintAuthority: newMintAuthorityKeypair.publicKey,
+    });
+    console.log(`transfer-mint-authority transaction txId: ${txIdTransferMintAuthority}, has finitialized`);
+    {
+      const mintAccountInfo = await Token.getMint(connection, mintAccountKeypair.publicKey);
+      console.log(`mintAccountAddress: ${mintAccountKeypair.publicKey.toBase58()}`);
+      printMintInfo(mintAccountInfo);
+
+      expect(mintAccountInfo.mintAuthority.toBase58()).toBe(newMintAuthorityKeypair.publicKey.toBase58());
+    }
 
   })
+
+  
 
 });

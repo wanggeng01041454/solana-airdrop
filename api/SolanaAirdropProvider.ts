@@ -33,6 +33,7 @@ export type ProgramInitializeAirdropProjectParams = anchor.IdlTypes<SolanaAirdro
 export type ProgramAirdropProjectAccount = anchor.IdlTypes<SolanaAirdrop>["airdropProject"];
 
 export type ProgramClaimFtParams = anchor.IdlTypes<SolanaAirdrop>["claimFtParams"];
+export type ProgramTransferMintAuthorityParams = anchor.IdlTypes<SolanaAirdrop>["transferMintAuthParams"];
 
 
 // 辅助类型参数
@@ -93,6 +94,26 @@ export interface ClaimFtActionParams extends BaseActionParams {
   signature: Buffer
 }
 
+/**
+ * @description 转移 mint-account 的 mint-authority 参数
+ * 特别说明： 所有的 *Keypair参数，都是可选的，只有在 buildType 为 SendAndFinalizeTx 或 SendAndConfirmTx 时，才需要传入
+ */
+export interface TransferMintAuthorityActionParams extends BaseActionParams {
+  // 交易费支付者
+  payer: PublicKey,
+  payerKeypair?: Keypair,
+
+  // 相关的 airdrop 项目
+  airdropProjectPubkey: PublicKey,
+  // airdrop project 的管理员, 需要它的签名
+  airdropProjectAdminKeypair?: Keypair,
+
+  // 要转移的 mint-account
+  mintAccountPubkey: PublicKey,
+
+  // mint-account 的新 authority
+  newMintAuthority: PublicKey
+}
 
 
 const AIRDROP_PROJECT_SEED = Buffer.from("ad_project");
@@ -387,6 +408,42 @@ export class SolanaAirdropProvider {
 
     return await buildActionResult(buildParams);
   }
+
+  /**
+   * @description 转移 mint-account 的 mint-authority
+   * @param params 
+   * @returns 
+   */
+  public async transferMintAuthorityAction(params: TransferMintAuthorityActionParams): Promise<ActionResult> {
+    const transMintAuthParams: ProgramTransferMintAuthorityParams = {
+      newMintAuthority: params.newMintAuthority
+    };
+
+    // const airdropProjectAccount = await this.getAirdropProjectAccount(params.airdropProjectPubkey);
+
+    // 构造指令
+    const ix = await this.program.methods
+      .transferMintAuthority(transMintAuthParams)
+      .accounts({
+        payer: params.payer,
+        airdropProject: params.airdropProjectPubkey,
+        mint: params.mintAccountPubkey
+      }).instruction();
+
+    const buildParams: BuildActionResultParams = {
+      buildType: params.buildType,
+      cuPrice: params.cuPrice,
+      cuFactor: params.cuFactor,
+
+      connection: this.connection,
+      ixs: [ix],
+      payer: params.payer,
+      signers: [params.payerKeypair, params.airdropProjectAdminKeypair]
+    };
+
+    return await buildActionResult(buildParams);
+  }
+
 }
 
 
