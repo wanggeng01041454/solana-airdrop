@@ -128,6 +128,19 @@ export interface VerifyUserBusinessNonceActionParams extends BaseActionParams {
 }
 
 /**
+ * @description 关闭 UserBusinessNonceAccount 的参数
+ * 特别说明： 所有的 *Keypair参数，都是可选的，只有在 buildType 为 SendAndFinalizeTx 或 SendAndConfirmTx 时，才需要传入
+ */
+export interface CloseUserBusinessNonceActionParams extends BaseActionParams {
+  // 交易费支付者
+  nonceUser: PublicKey,
+  nonceUserKeypair?: Keypair,
+
+  // 相关的 airdrop 项目
+  userBusinessNonceAccountPubkey: PublicKey,
+}
+
+/**
  * @description 获取 BusinessProject 账户参数
  * 
  */
@@ -447,6 +460,37 @@ export class NonceVerifyProvider {
       ixs: [ix],
       payer: params.payer,
       signers: [params.payerKeypair, params.userKeypair, params.userFeePayerKeypair, params.businessProjectAuthorityKeypair]
+    };
+
+    return await buildActionResult(buildParams);
+  }
+
+  /**
+   * @description 关闭 UserBusinessNonceAccount
+   * @param params 
+   * @returns 
+   */
+  public async closeUserBusinessNonceAccountAction(params: CloseUserBusinessNonceActionParams): Promise<ActionResult> {
+
+    const accounts = {
+      nonceUser: params.nonceUser,
+      userBusinessNonce: params.userBusinessNonceAccountPubkey,
+    };
+
+    // 构造指令
+    const ix = await this.program.methods
+      .closeUserBusinessNoce()
+      .accounts(accounts).instruction();
+
+    const buildParams: BuildActionResultParams = {
+      buildType: params.buildType,
+      cuPrice: params.cuPrice,
+      cuFactor: params.cuFactor,
+
+      connection: this.connection,
+      ixs: [ix],
+      payer: params.nonceUser,
+      signers: [params.nonceUserKeypair]
     };
 
     return await buildActionResult(buildParams);

@@ -8,6 +8,48 @@
   },
   "instructions": [
     {
+      "name": "close_user_business_noce",
+      "docs": [
+        "关闭用户的业务nonce"
+      ],
+      "discriminator": [
+        53,
+        254,
+        106,
+        120,
+        140,
+        238,
+        140,
+        168
+      ],
+      "accounts": [
+        {
+          "name": "nonce_user",
+          "docs": [
+            "需要 用户 签名",
+            "用户自己支付手续费，自己接收关闭后的资金"
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "user_business_nonce"
+          ]
+        },
+        {
+          "name": "user_business_nonce",
+          "docs": [
+            "被关闭的 airdrop 项目"
+          ],
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "init_user_business_nonce",
       "docs": [
         "初始化用户的业务nonce"

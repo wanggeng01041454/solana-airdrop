@@ -173,7 +173,7 @@ describe("nonce-verify 合约测试", async () => {
   });
 
 
-  test("verifyBusinessNonce指令 - 验证业务nonce的变化符合预期", async () => {
+  test("verifyBusinessNonce指令 - 验证业务nonce的变化符合预期 & 关闭userBusinessNonceAccount", async () => {
     const adminKeypair = Keypair.generate();
     const baseKeypair = Keypair.generate();
     const projectId = Keypair.generate().publicKey;
@@ -272,6 +272,30 @@ describe("nonce-verify 合约测试", async () => {
     await increaseAliceNonce();
     nonceInfo = await getAliceNonce();
     expect(nonceInfo.nonceValue).toBe(2);
+
+    const userBusinessNonceAddress = nonceVerifyProvider.findUserBusinessNonceAccountAddress({
+      user: aliceKeypair.publicKey,
+      businessProject: businessProject
+    });
+
+    // 关闭alice的business-nonce
+    const txIdCloseUserBusinessNonce = await nonceVerifyProvider.closeUserBusinessNonceAccountAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+
+      nonceUser: aliceKeypair.publicKey,
+      nonceUserKeypair: aliceKeypair,
+
+      userBusinessNonceAccountPubkey: userBusinessNonceAddress,
+    });
+    console.log(`close-user-business-nonce-account transaction txId: ${txIdCloseUserBusinessNonce}, has finitialized`);
+    {
+      console.log('关闭后， userBusindessNonceAccount 应该是不存在的');
+      let nonceInfo = await getAliceNonce();
+      expect(nonceInfo.isExist).toBe(false);
+    }
+
   });
 });
 

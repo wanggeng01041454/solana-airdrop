@@ -45,6 +45,13 @@ pub mod nonce_verify {
         instructions::verify_business_nonce(ctx, params)
     }
 
+    /// 关闭用户的业务nonce
+    pub fn close_user_business_noce(
+        ctx: Context<CloseUserBusinessNonceAccounts>,
+    ) -> Result<()> {
+        instructions::close_user_business_noce(ctx)
+    }
+
     //todo: 从 nonce-project 中取走费用
     //todo: 变更 business-project 的authority
 
