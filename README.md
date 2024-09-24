@@ -13,6 +13,10 @@ copy_idl.sh
 # 再次构建
 anchor build
 
+# 构建测试辅助程序
+cd rust_app/sign_checker
+cargo build
+
 # 执行测试
 anchor test
 

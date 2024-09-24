@@ -3,6 +3,8 @@ import {
   PublicKey
 } from "@solana/web3.js";
 
+import fs from 'fs';
+
 import * as anchor from "@coral-xyz/anchor";
 
 import {
@@ -178,9 +180,15 @@ export async function transferSol(params: {
 export function runAppAndGetStdout(cmdPath: string, args: string[]): Promise<string> {
 
   return new Promise((resolve, reject) => {
+    // 如果可执行文件不存在，抛出异常
+    if (!fs.existsSync(cmdPath)) {
+      reject(new Error(`可执行文件不存在: ${cmdPath}`));
+    }
+
       const child = spawn(cmdPath, args);
       console.log(`run cmd: ${cmdPath} ${args.join(' ')}`);
 
+      
       let output = '';
       let errorOutput = '';
 

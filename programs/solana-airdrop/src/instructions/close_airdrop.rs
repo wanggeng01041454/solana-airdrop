@@ -45,9 +45,9 @@ pub struct CloseAirdropProjectAccounts<'info> {
 
     /// 被关闭的 airdrop 项目
     #[account(
-          mut,
-          has_one = airdrop_project_admin,
-        )]
+        mut,
+        has_one = airdrop_project_admin,
+    )]
     pub airdrop_project: Box<Account<'info, AirdropProject>>,
 
     pub system_program: Program<'info, System>,

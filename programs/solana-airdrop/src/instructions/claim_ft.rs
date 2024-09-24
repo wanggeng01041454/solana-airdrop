@@ -67,6 +67,7 @@ fn verify_nonce(ctx: &Context<ClaimFtAccounts>, params: &ClaimFtParams) -> Resul
         business_project_authority: ctx.accounts.business_project_authority.to_account_info(), // business_project_authority 是本地的 pda account
         business_project: ctx.accounts.business_project.to_account_info(),
         nonce_project: ctx.accounts.nonce_project.to_account_info(),
+        nonce_vault_account: ctx.accounts.nonce_vault_account.to_account_info(),
         system_program: ctx.accounts.system_program.to_account_info(),
     };
     let nonce_verify_ctx =
@@ -264,8 +265,10 @@ pub struct ClaimFtAccounts<'info> {
     pub user_token_account: Box<Account<'info, TokenAccount>>,
 
     // nonce project 账户
-    #[account(mut)]
     pub nonce_project: Box<Account<'info, nonce_verify_accounts::NonceProject>>,
+
+    #[account(mut)]
+    pub nonce_vault_account: SystemAccount<'info>,
 
     // business project 账户
     #[account(

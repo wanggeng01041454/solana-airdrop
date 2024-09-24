@@ -62,7 +62,7 @@ describe("nonce-verify 合约测试", async () => {
     });
 
     // 查询 nonce-project
-    const nonceProjectAccount = await nonceVerifyProvider.getNonceProjectAccount(baseKeypair.publicKey);
+    const nonceProjectAccount = await nonceVerifyProvider.getNonceProjectAccountByBasePubkey(baseKeypair.publicKey);
     console.log(`nonceProjectAccount: ${JSON.stringify(nonceProjectAccount, undefined, 2)}`);
 
     expect(businessFee).toBe(businessFee);
@@ -74,7 +74,8 @@ describe("nonce-verify 合约测试", async () => {
     const projectAuthority = Keypair.generate();
 
     const nonceProjectPubkey = nonceVerifyProvider.findNonceProjectAddress(baseKeypair.publicKey);
-    const nonceProjectBeforeBalance = await connection.getBalance(nonceProjectPubkey);
+    const nonceVaultPubkey = nonceVerifyProvider.findNonceVaultAddress(baseKeypair.publicKey);
+    const nonceProjectBeforeBalance = await connection.getBalance(nonceVaultPubkey);
 
     const txId2 = await registerBusinessProject4Test({
       provider: nonceVerifyProvider,
@@ -85,7 +86,7 @@ describe("nonce-verify 合约测试", async () => {
       projectAuthorityPubkey: projectAuthority.publicKey
     });
 
-    const nonceProjectAfterBalance = await connection.getBalance(nonceProjectPubkey);
+    const nonceProjectAfterBalance = await connection.getBalance(nonceVaultPubkey);
 
     // 查询 business-project
     const businessProjectAccount = await nonceVerifyProvider.getBusinessProjectAccount({
@@ -100,7 +101,7 @@ describe("nonce-verify 合约测试", async () => {
   });
 
 
-  test("initializeProject指令 - admin为None & 并注册业务工程 & businessFee>0", async () => {
+  test("initializeProject指令 - admin为None & 并注册业务工程 & businessFee>0 & claim nonce-fee", async () => {
     const baseKeypair = Keypair.generate();
 
     const initializeProjectParams: InitializeNonceProjectActionParams = {
@@ -123,7 +124,7 @@ describe("nonce-verify 合约测试", async () => {
     console.log(`initialize-nonce-project transaction txId: ${txId}, has finitialized`);
 
     // 查询 nonce-project
-    const nonceProjectAccount = await nonceVerifyProvider.getNonceProjectAccount(baseKeypair.publicKey);
+    const nonceProjectAccount = await nonceVerifyProvider.getNonceProjectAccountByBasePubkey(baseKeypair.publicKey);
     console.log(`projectAccount: ${JSON.stringify(nonceProjectAccount, undefined, 2)}`);
 
     expect(initializeProjectParams.businessFee).toBe(nonceProjectAccount.businessFee);
@@ -152,12 +153,14 @@ describe("nonce-verify 合约测试", async () => {
     };
 
     const nonceProjectPubkey = nonceVerifyProvider.findNonceProjectAddress(baseKeypair.publicKey);
-    const nonceProjectBeforeBalance = await connection.getBalance(nonceProjectPubkey);
+    const nonceVaultPubkey = nonceVerifyProvider.findNonceVaultAddress(baseKeypair.publicKey);
+
+    const nonceProjectBeforeBalance = await connection.getBalance(nonceVaultPubkey);
 
     const txId2 = await nonceVerifyProvider.registerBusinessProjectAction(registerBusinessProjectParams) as string;
     console.log(`register-business-project transaction txId: ${txId2}, has finitialized`);
 
-    const nonceProjectAfterBalance = await connection.getBalance(nonceProjectPubkey);
+    const nonceProjectAfterBalance = await connection.getBalance(nonceVaultPubkey);
 
     // 查询 business-project
     const businessProjectAccount = await nonceVerifyProvider.getBusinessProjectAccount({
@@ -170,6 +173,34 @@ describe("nonce-verify 合约测试", async () => {
     expect(businessProjectAccount.businessProjectId.toBase58()).toBe(projectId.toBase58());
     expect(businessProjectAccount.businessProjectAuthority.toBase58()).toBe(projectAuthority.publicKey.toBase58());
     expect(businessProjectAccount.nonceProject.toBase58()).toBe(nonceProjectPubkey.toBase58());
+
+
+    // claim noce-fee
+    {
+      const claimAmount = 2;
+
+      const beforeClaimNonceProjectBalance = await connection.getBalance(nonceVaultPubkey);
+      const claimNonceFeeTxId = await nonceVerifyProvider.claimNonceFeeAction({
+        buildType: BuildType.SendAndFinalizeTx,
+        cuPrice: 1 * 10 ** 6,
+        cuFactor: DEFAULT_CU_FACTOR,
+
+        payer: GlobalPayerKeypair.publicKey,
+        payerKeypair: GlobalPayerKeypair,
+
+        receiverPubkey: GlobalPayerKeypair.publicKey,
+
+        nonceProjectBase: baseKeypair.publicKey,
+        nonceProjectBaseKeypair: baseKeypair,
+
+        amount: new anchor.BN(claimAmount),
+      });
+      console.log(`claim-nonce-fee transaction txId: ${claimNonceFeeTxId}, has finitialized`);
+      const afterClaimNonceProjectBalance = await connection.getBalance(nonceVaultPubkey);
+
+      expect(beforeClaimNonceProjectBalance - claimAmount).toBe(afterClaimNonceProjectBalance);
+    }
+
   });
 
 

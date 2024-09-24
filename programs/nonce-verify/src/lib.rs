@@ -52,7 +52,14 @@ pub mod nonce_verify {
         instructions::close_user_business_noce(ctx)
     }
 
-    //todo: 从 nonce-project 中取走费用
+    /// 领取nonce项目的费用
+    pub fn claim_nonce_fee(
+        ctx: Context<ClaimNonceFeeAccounts>,
+        params: ClaimNonceFeeParams,
+    ) -> Result<()> {
+        instructions::claim_nonce_fee(ctx, params)
+    }
+
     //todo: 变更 business-project 的authority
 
 }

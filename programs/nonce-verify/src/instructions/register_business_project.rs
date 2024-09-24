@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 // 注意！这里要用CpiContext 的transfer方法, 不能使用 anchor_lang::solana_program::system_program::transfer
 use anchor_lang::system_program;
 
-use crate::constants::{NONCE_PROJECT_SEED, BUSINESS_PROJECT_SEED};
+use crate::constants::*;
 use crate::errors::NonceVerifyErrors;
 use crate::instructions::initialize_nonce_project::NonceProject;
 
@@ -34,7 +34,7 @@ pub fn register_business_project(
             ctx.accounts.system_program.to_account_info(),
             system_program::Transfer {
                 from: ctx.accounts.register_fee_payer.to_account_info(),
-                to: ctx.accounts.nonce_project.to_account_info(),
+                to: ctx.accounts.nonce_vault_account.to_account_info(),
             },
         );
         system_program::transfer(cpi_ctx, fee as u64)?;
@@ -97,9 +97,8 @@ pub struct RegisterBusinessProjectAccounts<'info> {
     /// 如果nonce-project 的 admin 存在，则需要它的签名
     pub nonce_project_admin: Option<Signer<'info>>,
 
-    /// nonce Project账户, 使用该账户收款
+    /// nonce Project账户
     #[account(
-        mut,
         seeds = [
             NONCE_PROJECT_SEED, 
             nonce_project.nonce_project_base.key().as_ref()
@@ -107,6 +106,17 @@ pub struct RegisterBusinessProjectAccounts<'info> {
         bump
     )]
     pub nonce_project: Box<Account<'info, NonceProject>>,
+
+    /// 使用该账户收款
+    #[account(
+        mut,
+        seeds = [
+            NONCE_VAULT_ACCOUNT_SEED,
+            nonce_project.nonce_project_base.key().as_ref()
+        ],
+        bump,
+    )]
+    pub nonce_vault_account: SystemAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }

@@ -351,6 +351,7 @@ export class SolanaAirdropProvider {
       user: params.claimer
     });
     const businessProjectAccount = await this.nonceVerifyProvider.getBusinessProjectAccount(params.nonceVerifyBusinessProjectPubkey);
+    const nonceProjectAccount = await this.nonceVerifyProvider.getNonceProjectAccountByNonceProjectPubkey(businessProjectAccount.nonceProject);
 
     const airdropProjectAccount = await this.getAirdropProjectAccount(params.airdropProjectPubkey);
 
@@ -362,6 +363,7 @@ export class SolanaAirdropProvider {
       airdropProject: params.airdropProjectPubkey,
       mint: params.mintAccountPubkey,
       nonceProject: businessProjectAccount.nonceProject,
+      nonceVaultAccount: nonceProjectAccount.nonceVaultAccount,
       businessProject: params.nonceVerifyBusinessProjectPubkey,
       businessProjectAuthority: businessProjectAccount.businessProjectAuthority,
       userBusinessNonce: userBusinessNonceAccountAddress

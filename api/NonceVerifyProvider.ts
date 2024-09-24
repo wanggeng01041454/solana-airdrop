@@ -32,6 +32,7 @@ export type ProgramBusinessProjectAccount = anchor.IdlTypes<NonceVerify>["busine
 export type ProgramVerifyUserBusinessNonceParams = anchor.IdlTypes<NonceVerify>["verifyBusinessNonceParams"];
 export type ProgramUserBusinessNonceStateAccount = anchor.IdlTypes<NonceVerify>["userBusinessNonceState"];
 
+export type ProgramClaimNonceFeeParams = anchor.IdlTypes<NonceVerify>["claimNonceFeeParams"];
 
 // 辅助类型参数
 /**
@@ -141,6 +142,27 @@ export interface CloseUserBusinessNonceActionParams extends BaseActionParams {
 }
 
 /**
+ * @description 领取 nonce 交易费
+ * 特别说明： 所有的 *Keypair参数，都是可选的，只有在 buildType 为 SendAndFinalizeTx 或 SendAndConfirmTx 时，才需要传入
+ */
+export interface ClaimNonceFeeActionParams extends BaseActionParams {
+  // 交易费支付者
+  payer: PublicKey,
+  payerKeypair?: Keypair,
+
+  // fee 接收者
+  receiverPubkey: PublicKey,
+
+  // nonce-project 的 base 账户
+  nonceProjectBase: PublicKey,
+  nonceProjectBaseKeypair?: Keypair,
+
+  // 要领取的金额
+  amount: anchor.BN
+}
+
+
+/**
  * @description 获取 BusinessProject 账户参数
  * 
  */
@@ -150,6 +172,7 @@ interface GetBusinessProjectAccountParams {
 };
 
 const NONCE_VERIFY_PROJECT_SEED = Buffer.from("nonce_verify_project");
+const NONCE_VAULT_ACCOUNT_SEED = Buffer.from("nonce_vault_account");
 const BUSINESS_PROJECT_SEED = Buffer.from("business_project");
 const USER_BUSINESS_NONCE_SEED = Buffer.from("user_business_nonce");
 
@@ -195,6 +218,18 @@ export class NonceVerifyProvider {
   public findNonceProjectAddress(base: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
       [NONCE_VERIFY_PROJECT_SEED, base.toBuffer()],
+      this.program.programId
+    )[0];
+  }
+
+  /**
+   * @description 查找 NonceVault 地址
+   * @param base 
+   * @returns 
+   */
+  public findNonceVaultAddress(base: PublicKey): PublicKey {
+    return PublicKey.findProgramAddressSync(
+      [NONCE_VAULT_ACCOUNT_SEED, base.toBuffer()],
       this.program.programId
     )[0];
   }
@@ -279,10 +314,14 @@ export class NonceVerifyProvider {
    * @description 获取 NonceProject 账户
    * @param basePubkey 
    */
-  public async getNonceProjectAccount(basePubkey: PublicKey): Promise<ProgramNonceProjectAccount> {
+  public async getNonceProjectAccountByBasePubkey(basePubkey: PublicKey): Promise<ProgramNonceProjectAccount> {
     const accountPubkey = this.findNonceProjectAddress(basePubkey);
     return await this.program.account.nonceProject.fetch(accountPubkey);
   }
+  public async getNonceProjectAccountByNonceProjectPubkey(nonceAccountPubkey: PublicKey): Promise<ProgramNonceProjectAccount> {
+    return await this.program.account.nonceProject.fetch(nonceAccountPubkey);
+  }
+
 
   /**
    * @description 注册 BusinessProject
@@ -495,4 +534,40 @@ export class NonceVerifyProvider {
 
     return await buildActionResult(buildParams);
   }
+
+  /**
+   * @description 领取 nonce 交易费
+   * 注意：最多可以从 nonce-project 中领取多少， 需要进行额外的计算，如果超过这个额度，而没有把nonce-project中的余额清空，会导致交易失败
+   * @param params 
+   * @returns 
+   */
+  public async claimNonceFeeAction(params: ClaimNonceFeeActionParams): Promise<ActionResult> {
+    const claimNonceFeeParams: ProgramClaimNonceFeeParams = {
+      amount: params.amount
+    };
+
+    // 构造指令
+    const ix = await this.program.methods
+      .claimNonceFee(claimNonceFeeParams)
+      .accounts({
+        payer: params.payer,
+        receiver: params.receiverPubkey,
+        nonceProjectBase: params.nonceProjectBase,
+      }).instruction();
+
+    const buildParams: BuildActionResultParams = {
+      buildType: params.buildType,
+      cuPrice: params.cuPrice,
+      cuFactor: params.cuFactor,
+
+      connection: this.connection,
+      ixs: [ix],
+      payer: params.payer,
+      signers: [params.payerKeypair, params.nonceProjectBaseKeypair]
+    };
+
+    return await buildActionResult(buildParams);
+  }
+
+
 }
