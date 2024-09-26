@@ -4,23 +4,21 @@ use crate::constants::*;
 
 use crate::instructions::register_business_project::BusinessProject;
 
-
 /// 初始化用户的业务nonce, 创建对应的账户
 /// 创建账户时，只需要用户签名即可， 不需要 business_project-authority 的授权
-pub fn init_user_business_nonce(
-    ctx: Context<InitUserBusinessNonceAccounts>
-) -> Result<()> {
+pub fn init_user_business_nonce(ctx: Context<InitUserBusinessNonceAccounts>) -> Result<()> {
     msg!("init user's business nonce account");
 
-    ctx.accounts.user_business_nonce.set_inner(UserBusinessNonceState {
-      nonce_value: 0,
-      business_project: ctx.accounts.business_project.key(),
-      nonce_user: *ctx.accounts.nonce_user.key,
-  });
+    ctx.accounts
+        .user_business_nonce
+        .set_inner(UserBusinessNonceState {
+            nonce_value: 0,
+            business_project: ctx.accounts.business_project.key(),
+            nonce_user: *ctx.accounts.nonce_user.key,
+        });
 
     Ok(())
 }
-
 
 /// 用户属于某个业务工程的nonce
 #[account]
@@ -68,5 +66,3 @@ pub struct InitUserBusinessNonceAccounts<'info> {
 
     pub system_program: Program<'info, System>,
 }
-
-
