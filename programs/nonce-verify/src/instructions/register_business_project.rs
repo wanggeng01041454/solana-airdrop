@@ -14,15 +14,16 @@ pub fn register_business_project(
     msg!("register business project");
 
     // 检查是否需要管理员签名, 并验证管理员签名
-    if let Some(admin) = &ctx.accounts.nonce_project.nonce_project_admin {
+    if ctx.accounts.nonce_project.register_business_need_verify {
         if ctx.accounts.nonce_project_admin.is_none() {
             return err!(NonceVerifyErrors::RunOutOfAdminSignature);
         }
         let nonce_admin = ctx.accounts.nonce_project_admin.as_ref().unwrap();
-        if nonce_admin.key() != *admin {
+        if nonce_admin.key() != ctx.accounts.nonce_project.nonce_project_admin {
             return err!(NonceVerifyErrors::RunOutOfAdminSignature);
         }
     }
+    
 
     // 检查是否要收取业务注册费用，配置了则收取
     // 一个需要关注的BUG： 如果用EOA账户收款，如果该账户原本的lamports为0，（由于fee很少），受到fee后，账户的lamports不足以支付rent,会导致本交易失败
@@ -101,7 +102,7 @@ pub struct RegisterBusinessProjectAccounts<'info> {
     #[account(
         seeds = [
             NONCE_PROJECT_SEED, 
-            nonce_project.nonce_project_base.key().as_ref()
+            nonce_project.project_id.key().as_ref()
             ],
         bump
     )]
@@ -112,7 +113,7 @@ pub struct RegisterBusinessProjectAccounts<'info> {
         mut,
         seeds = [
             NONCE_VAULT_ACCOUNT_SEED,
-            nonce_project.nonce_project_base.key().as_ref()
+            nonce_project.project_id.key().as_ref()
         ],
         bump,
     )]

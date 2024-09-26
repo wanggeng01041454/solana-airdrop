@@ -10,9 +10,10 @@ pub fn initialize_nonce_project(
     msg!("initialize nonce project");
 
     ctx.accounts.nonce_project.set_inner(NonceProject {
-        nonce_project_admin: params.nonce_project_admin,
-        nonce_project_base: *ctx.accounts.nonce_project_base.key,
+        project_id: params.project_id.key(),
+        nonce_project_admin: ctx.accounts.nonce_project_admin.key(),
         nonce_vault_account: *ctx.accounts.nonce_vault_account.key,
+        register_business_need_verify: params.register_business_need_verify,
         business_fee: params.business_fee,
         user_fee: params.user_fee,
     });
@@ -35,16 +36,19 @@ pub fn initialize_nonce_project(
 
 #[account]
 pub struct NonceProject {
+    /// nonce project 的 id
+    pub project_id: Pubkey,
+
     /// 管理员账户
-    /// 如果存在，则每次注册新的业务时，需要管理员签名
-    pub nonce_project_admin: Option<Pubkey>,
+    /// 则每次注册新的业务时，需要管理员签名
+    pub nonce_project_admin: Pubkey,
 
-    /// base Account
-    pub nonce_project_base: Pubkey,
-
-    /// 专门用来收钱的账户
+    /// 专门用来收钱的pda账户, 没有account-data
     /// fixme: 从 nonce_project(包含数据) 转移sol时，有无法解决的问题，所以设计该账户，专门用来收费
     pub nonce_vault_account: Pubkey,
+
+    /// 注册新的 business-project 时，是否需要管理员签名授权
+    pub register_business_need_verify: bool,
 
     /// 业务费用
     /// 每次注册新业务时需要支付的费用, lamports
@@ -55,22 +59,24 @@ pub struct NonceProject {
 }
 
 impl NonceProject {
-    const LEN: usize = 8 + (1 + 32) + 32 + 32 + 4 + 4;
+    const LEN: usize = 8 + 32 + 32 + 32 + 1 + 4 + 4;
 }
 
 #[derive(Accounts)]
+#[instruction(params: InitializeNonceProjectParams)]
 pub struct InitializeNonceProjectAccounts<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
-    pub nonce_project_base: Signer<'info>,
+    /// 需要 project-admin 签名，才可以创建账户
+    pub nonce_project_admin: Signer<'info>,
 
     #[account(
         init,
         payer = payer,
         seeds = [
             NONCE_PROJECT_SEED,
-            nonce_project_base.key().as_ref()
+            params.project_id.key().as_ref()
         ],
         bump,
         space = NonceProject::LEN
@@ -81,7 +87,7 @@ pub struct InitializeNonceProjectAccounts<'info> {
         mut,
         seeds = [
             NONCE_VAULT_ACCOUNT_SEED,
-            nonce_project_base.key().as_ref()
+            params.project_id.key().as_ref()
         ],
         bump,
     )]
@@ -92,14 +98,16 @@ pub struct InitializeNonceProjectAccounts<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Default, Debug, Clone)]
 pub struct InitializeNonceProjectParams {
+    /// project-id, 用于标识 nonce-project
+    pub project_id: Pubkey,    
+
+    /// 注册新的 business-project 时，是否需要管理员签名授权
+    pub register_business_need_verify: bool,    
+
     /// 业务费用
     /// 每次注册新业务时需要支付的费用
     pub business_fee: u32,
 
     /// 每次使用时需要支付的费用
     pub user_fee: u32,
-
-    /// 管理员账户, 可选账户
-    /// 如果存在，需要在注册时签名
-    pub nonce_project_admin: Option<Pubkey>,
 }

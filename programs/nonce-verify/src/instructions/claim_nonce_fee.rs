@@ -13,11 +13,11 @@ pub fn claim_nonce_fee(
     msg!("claim fee from nonce project, amount: {}", params.amount);
 
     let vault_account_bump = ctx.bumps.nonce_vault_account;
-    let base_pubkey = ctx.accounts.nonce_project_base.key();
+    let nonce_project_id = ctx.accounts.nonce_project.project_id.key();
 
     let vault_account_seeds = &[
         NONCE_VAULT_ACCOUNT_SEED,
-        base_pubkey.as_ref(),
+        nonce_project_id.as_ref(),
         &[vault_account_bump],
     ];
 
@@ -47,16 +47,12 @@ pub struct ClaimNonceFeeAccounts<'info> {
     #[account(mut)]
     pub receiver: AccountInfo<'info>,
 
-    /// 提取资金时，需要base账户签名
-    pub nonce_project_base: Signer<'info>,
+    /// 提取资金时，需要admin账户签名
+    pub nonce_project_admin: Signer<'info>,
 
-    /// nonce Project账户, 使用该账户收款
+    /// nonce Project账户, 
     #[account(
-        seeds = [
-            NONCE_PROJECT_SEED,
-            nonce_project_base.key().as_ref()
-        ],
-        bump,
+        has_one = nonce_project_admin,
     )]
     pub nonce_project: Box<Account<'info, NonceProject>>,
 
@@ -65,7 +61,7 @@ pub struct ClaimNonceFeeAccounts<'info> {
         mut,
         seeds = [
             NONCE_VAULT_ACCOUNT_SEED,
-            nonce_project.nonce_project_base.key().as_ref()
+            nonce_project.project_id.key().as_ref()
         ],
         bump,
     )]

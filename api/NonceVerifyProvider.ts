@@ -44,16 +44,19 @@ export interface InitializeNonceProjectActionParams extends BaseActionParams {
   businessFee?: number,
   userFee?: number,
 
+  // 注册 business project 是否需要验证, 默认 不 需要验证
+  registerBusinessNeedVerify?: boolean,
+
   // 交易费支付者
   payer: PublicKey,
   payerKeypair?: Keypair,
 
-  // 项目所属的 base 账户
-  base: PublicKey,
-  baseKeypair?: Keypair,
+  // nonce 项目的 projectId
+  projectId: PublicKey,
 
-  // 项目管理员, 不需要签名
-  admin?: PublicKey,
+  // 项目管理员, 发送交易时需要管理员签名
+  admin: PublicKey,
+  adminKeypair?: Keypair,
 }
 
 /**
@@ -75,8 +78,8 @@ export interface RegisterBusinessProjectActionParams extends BaseActionParams {
   registerFeePayer: PublicKey,
   registerFeePayerKeypair?: Keypair,
 
-  // nonce-project 的 base 账户
-  nonceBase: PublicKey,
+  // nonce-project 的 projectId
+  nonceProjectId: PublicKey,
 
   // nonce-project 的 admin 账户
   // 如果创建 nonce-project 时指定了 admin， 则在注册 business-project 时，需要这个admin签名
@@ -153,9 +156,12 @@ export interface ClaimNonceFeeActionParams extends BaseActionParams {
   // fee 接收者
   receiverPubkey: PublicKey,
 
-  // nonce-project 的 base 账户
-  nonceProjectBase: PublicKey,
-  nonceProjectBaseKeypair?: Keypair,
+  // nonce-project id
+  nonceProjectId: PublicKey,
+
+  // nonce-project admin, 需要它的签名才可以领取
+  nonceProjectAdmin: PublicKey,
+  nonceProjectAdminKeypair?: Keypair,
 
   // 要领取的金额
   amount: anchor.BN
@@ -167,8 +173,8 @@ export interface ClaimNonceFeeActionParams extends BaseActionParams {
  * 
  */
 interface GetBusinessProjectAccountParams {
-  nonceBase: PublicKey,
-  projectId: PublicKey
+  nonceProjectId: PublicKey,
+  businessProjectId: PublicKey
 };
 
 const NONCE_VERIFY_PROJECT_SEED = Buffer.from("nonce_verify_project");
@@ -211,45 +217,46 @@ export class NonceVerifyProvider {
 
   /**
    * @description 查找nonce-Project地址
-   * @param base: project 所属的 base 账户
+   * @param projectId: nonce-Project的projectId
    * @param programId: programId
    * @returns 
    */
-  public findNonceProjectAddress(base: PublicKey): PublicKey {
+  public findNonceProjectAddress(projectId: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
-      [NONCE_VERIFY_PROJECT_SEED, base.toBuffer()],
+      [NONCE_VERIFY_PROJECT_SEED, projectId.toBuffer()],
       this.program.programId
     )[0];
   }
 
   /**
    * @description 查找 NonceVault 地址
-   * @param base 
+   * @param projectId nonce-Project的projectId
    * @returns 
    */
-  public findNonceVaultAddress(base: PublicKey): PublicKey {
+  public findNonceVaultAddress(projectId: PublicKey): PublicKey {
     return PublicKey.findProgramAddressSync(
-      [NONCE_VAULT_ACCOUNT_SEED, base.toBuffer()],
+      [NONCE_VAULT_ACCOUNT_SEED, projectId.toBuffer()],
       this.program.programId
     )[0];
   }
 
   /**
    * @description 查找 BusinessProject 地址
-   * @param nonceBase 
-   * @param projectId 
+   * @param nonceProjectId 
+   * @param businessProjectId 
    * @returns 
    */
   public findBusinessProjectAddress(params: {
-    nonceBase: PublicKey,
-    projectId: PublicKey
+    nonceProjectId: PublicKey,
+    businessProjectId: PublicKey
   }): PublicKey {
-    const { nonceBase, projectId } = params;
+    const { nonceProjectId, businessProjectId } = params;
+
     return PublicKey.findProgramAddressSync(
       [
         BUSINESS_PROJECT_SEED,
-        this.findNonceProjectAddress(nonceBase).toBuffer(),
-        projectId.toBuffer()
+        this.findNonceProjectAddress(nonceProjectId).toBuffer(),
+        businessProjectId.toBuffer()
       ],
       this.program.programId
     )[0];
@@ -285,7 +292,8 @@ export class NonceVerifyProvider {
     const initializeProjectParams: ProgramInitializeNonceProjectParams = {
       businessFee: params.businessFee ? params.businessFee : 0,
       userFee: params.userFee ? params.userFee : 0,
-      nonceProjectAdmin: params.admin ? params.admin : null
+      registerBusinessNeedVerify: params.registerBusinessNeedVerify ? params.registerBusinessNeedVerify : false,
+      projectId: params.projectId,
     };
 
     // 构造指令
@@ -293,7 +301,7 @@ export class NonceVerifyProvider {
       .initializeNonceProject(initializeProjectParams)
       .accounts({
         payer: params.payer,
-        nonceProjectBase: params.base
+        nonceProjectAdmin: params.admin,
       }).instruction();
 
     const buildParams: BuildActionResultParams = {
@@ -304,7 +312,7 @@ export class NonceVerifyProvider {
       connection: this.connection,
       ixs: [ix],
       payer: params.payer,
-      signers: [params.payerKeypair, params.baseKeypair]
+      signers: [params.payerKeypair, params.adminKeypair]
     };
 
     return await buildActionResult(buildParams);
@@ -339,11 +347,11 @@ export class NonceVerifyProvider {
       registerFeePayer: params.registerFeePayer,
       nonceProjectAdmin: params.nonceAdmin ? params.nonceAdmin : null,
       businessProjectAuthority: params.projectAuthority,
-      nonceProject: this.findNonceProjectAddress(params.nonceBase),
-      base: params.nonceBase,
+      nonceProject: this.findNonceProjectAddress(params.nonceProjectId),
+      base: params.nonceProjectId,
       businessProject: this.findBusinessProjectAddress({
-        nonceBase: params.nonceBase,
-        projectId: params.projectId
+        nonceProjectId: params.nonceProjectId,
+        businessProjectId: params.projectId
       })
     };
 
@@ -378,9 +386,9 @@ export class NonceVerifyProvider {
   public async getBusinessProjectAccount(
     paramsOrBusinessProject: GetBusinessProjectAccountParams | PublicKey
   ): Promise<ProgramBusinessProjectAccount> {
-    if ((paramsOrBusinessProject as GetBusinessProjectAccountParams).nonceBase !== undefined) {
-      const { nonceBase, projectId } = paramsOrBusinessProject as GetBusinessProjectAccountParams;
-      return await this.program.account.businessProject.fetch(this.findBusinessProjectAddress({ nonceBase, projectId }));
+    if ((paramsOrBusinessProject as GetBusinessProjectAccountParams).nonceProjectId !== undefined) {
+      const { nonceProjectId, businessProjectId } = paramsOrBusinessProject as GetBusinessProjectAccountParams;
+      return await this.program.account.businessProject.fetch(this.findBusinessProjectAddress({ nonceProjectId: nonceProjectId, businessProjectId: businessProjectId }));
     } else if (paramsOrBusinessProject instanceof PublicKey) {
       return await this.program.account.businessProject.fetch(paramsOrBusinessProject);
     } else {
@@ -546,14 +554,19 @@ export class NonceVerifyProvider {
       amount: params.amount
     };
 
+    const nonceProjectAddress = this.findNonceProjectAddress(params.nonceProjectId);
+
+    const accounts = {
+      payer: params.payer,
+      receiver: params.receiverPubkey,
+      nonceProject: nonceProjectAddress,
+      nonceProjectAdmin: params.nonceProjectAdmin
+    };
+
     // 构造指令
     const ix = await this.program.methods
       .claimNonceFee(claimNonceFeeParams)
-      .accounts({
-        payer: params.payer,
-        receiver: params.receiverPubkey,
-        nonceProjectBase: params.nonceProjectBase,
-      }).instruction();
+      .accounts(accounts).instruction();
 
     const buildParams: BuildActionResultParams = {
       buildType: params.buildType,
@@ -563,7 +576,7 @@ export class NonceVerifyProvider {
       connection: this.connection,
       ixs: [ix],
       payer: params.payer,
-      signers: [params.payerKeypair, params.nonceProjectBaseKeypair]
+      signers: [params.payerKeypair, params.nonceProjectAdminKeypair]
     };
 
     return await buildActionResult(buildParams);

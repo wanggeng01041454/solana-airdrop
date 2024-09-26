@@ -28,18 +28,20 @@ import { spawn } from 'child_process';
 export async function initNonceVerifyProject4Test(params: {
   provider: NonceVerifyProvider,
   pyaerKeypair: Keypair,
-  baseKeypair: Keypair,
-  adminKeypair?: Keypair,
+  projectId: PublicKey,
+  adminKeypair: Keypair,
   userFee?: number,
   businessFee?: number,
+  registerBusinessNeedVerify?: boolean,
 }): Promise<string> {
   const {
     provider,
     pyaerKeypair,
-    baseKeypair,
+    projectId,
     adminKeypair,
     userFee,
-    businessFee
+    businessFee,
+    registerBusinessNeedVerify
   } = params;
 
   const initializeProjectParams: InitializeNonceProjectActionParams = {
@@ -49,13 +51,16 @@ export async function initNonceVerifyProject4Test(params: {
 
     businessFee: businessFee,
     userFee: userFee,
+
+    registerBusinessNeedVerify: registerBusinessNeedVerify,
+
     payer: pyaerKeypair.publicKey,
     payerKeypair: pyaerKeypair,
 
-    base: baseKeypair.publicKey,
-    baseKeypair: baseKeypair,
+    projectId: projectId,
 
-    admin: adminKeypair?.publicKey,
+    admin: adminKeypair.publicKey,
+    adminKeypair: adminKeypair,
   };
 
 
@@ -72,19 +77,19 @@ export async function initNonceVerifyProject4Test(params: {
 export async function registerBusinessProject4Test(params: {
   provider: NonceVerifyProvider,
   pyaerKeypair: Keypair,
-  baseKeypair: Keypair,
-  adminKeypair?: Keypair,
-  projectId: PublicKey,
+  nonceProjectId: PublicKey,
+  nonceAdminKeypair: Keypair,
+  businessProjectId: PublicKey,
   projectAuthorityPubkey: PublicKey,
 }): Promise<string> {
-  const { provider, pyaerKeypair, baseKeypair, adminKeypair, projectId, projectAuthorityPubkey } = params;
+  const { provider, pyaerKeypair, nonceProjectId, nonceAdminKeypair, businessProjectId, projectAuthorityPubkey } = params;
 
   const registerBusinessProjectParams: RegisterBusinessProjectActionParams = {
     buildType: BuildType.SendAndFinalizeTx,
     cuPrice: 1 * 10 ** 6,
     cuFactor: DEFAULT_CU_FACTOR,
 
-    projectId: projectId,
+    projectId: businessProjectId,
     projectAuthority: projectAuthorityPubkey,
 
     payer: pyaerKeypair.publicKey,
@@ -92,10 +97,10 @@ export async function registerBusinessProject4Test(params: {
     registerFeePayer: pyaerKeypair.publicKey,
     registerFeePayerKeypair: pyaerKeypair,
 
-    nonceBase: baseKeypair.publicKey,
+    nonceProjectId: nonceProjectId,
 
-    nonceAdmin: adminKeypair?.publicKey,
-    nonceAdminKeypair: adminKeypair,
+    nonceAdmin: nonceAdminKeypair?.publicKey,
+    nonceAdminKeypair: nonceAdminKeypair,
   };
 
   const txId = await provider.registerBusinessProjectAction(registerBusinessProjectParams) as string;
@@ -114,31 +119,33 @@ export async function registerBusinessProject4Test(params: {
 export async function initNonceProjectAndRegisterBusinessProject4Test(params: {
   provider: NonceVerifyProvider,
   pyaerKeypair: Keypair,
-  baseKeypair: Keypair,
-  adminKeypair?: Keypair,
+  nonceProjectId: PublicKey,
+  nonceAdminKeypair: Keypair,
   userFee?: number,
   businessFee?: number,
+  registerBusinessNeedVerify?: boolean,
 
-  projectId: PublicKey,
+  businessProjectId: PublicKey,
   projectAuthorityPubkey: PublicKey,
 }): Promise<{ txId1: string, txId2: string }> {
-  const { provider, pyaerKeypair, baseKeypair, adminKeypair, userFee, businessFee, projectId, projectAuthorityPubkey } = params;
+  const { provider, pyaerKeypair, nonceProjectId, nonceAdminKeypair, userFee, businessFee, registerBusinessNeedVerify, businessProjectId, projectAuthorityPubkey } = params;
 
   const txId1 = await initNonceVerifyProject4Test({
     provider,
     pyaerKeypair,
-    baseKeypair,
-    adminKeypair,
+    projectId: nonceProjectId,
+    adminKeypair: nonceAdminKeypair,
     userFee,
     businessFee,
+    registerBusinessNeedVerify
   });
 
   const txId2 = await registerBusinessProject4Test({
     provider,
     pyaerKeypair,
-    baseKeypair,
-    adminKeypair,
-    projectId,
+    nonceProjectId,
+    nonceAdminKeypair,
+    businessProjectId,
     projectAuthorityPubkey,
   });
 

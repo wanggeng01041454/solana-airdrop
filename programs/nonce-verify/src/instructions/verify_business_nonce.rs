@@ -102,7 +102,7 @@ pub struct VerifyBusinessNonceAccounts<'info> {
     #[account(
         seeds = [
             NONCE_PROJECT_SEED,
-            nonce_project.nonce_project_base.key().as_ref()
+            nonce_project.project_id.key().as_ref()
             ],
         bump
     )]
@@ -113,7 +113,7 @@ pub struct VerifyBusinessNonceAccounts<'info> {
             mut,
             seeds = [
                 NONCE_VAULT_ACCOUNT_SEED,
-                nonce_project.nonce_project_base.key().as_ref()
+                nonce_project.project_id.key().as_ref()
             ],
             bump,
         )]

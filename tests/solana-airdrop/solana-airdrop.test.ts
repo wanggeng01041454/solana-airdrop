@@ -30,7 +30,7 @@ describe("solana-airdrop 合约测试", async () => {
   const airdropProvider = new SolanaAirdropProvider(connection);
 
   const nonceVerifyProjectAdminKeypair = Keypair.generate();
-  const nonceVerifyBaseKeypair = Keypair.generate();
+  const nonceProjectId = Keypair.generate().publicKey;
   const nonceVerifyBusinessProjectId = Keypair.generate().publicKey;
 
   const airdropProjectAdminKeypair = Keypair.generate();
@@ -49,8 +49,8 @@ describe("solana-airdrop 合约测试", async () => {
 
   // 获取 nonce-verify-business-project 的地址
   const businessProjectAddress = nonceVerifyProvider.findBusinessProjectAddress({
-    nonceBase: nonceVerifyBaseKeypair.publicKey,
-    projectId: nonceVerifyBusinessProjectId
+    nonceProjectId: nonceProjectId,
+    businessProjectId: nonceVerifyBusinessProjectId
   });
 
   // 获取 nonce-verify-business-project 的 authority
@@ -66,9 +66,9 @@ describe("solana-airdrop 合约测试", async () => {
   await initNonceProjectAndRegisterBusinessProject4Test({
     provider: nonceVerifyProvider,
     pyaerKeypair: GlobalPayerKeypair,
-    baseKeypair: nonceVerifyBaseKeypair,
-    adminKeypair: nonceVerifyProjectAdminKeypair,
-    projectId: nonceVerifyBusinessProjectId,
+    nonceProjectId: nonceProjectId,
+    nonceAdminKeypair: nonceVerifyProjectAdminKeypair,
+    businessProjectId: nonceVerifyBusinessProjectId,
     projectAuthorityPubkey: nonceVerifyBusinessProjectAuthority
   });
 
