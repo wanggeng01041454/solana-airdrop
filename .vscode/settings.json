@@ -1,0 +1,4 @@
+{
+  "plantuml.exportFormat": "svg",
+  "plantuml.exportOutDir": "./docs/puml-images",
+}

@@ -1,20 +1,77 @@
 @startuml 01.空投合约账户结构
   title 空投合约账户结构
 
-  struct AirdropManager {
-    admin: Pubkey, // 管理员账户
-    ....
-    holder: Pubkey, // 空投代币的持有者账户，pda地址
-    ....
-    ft_singer_checker: Pubkey, // 签名校验账户, 用于spl-token
-    ....
-    nft_singer_checker: Pubkey, // 签名校验账户, 用于nft
+  left to right direction
+
+  package "airdrop-program" {
+
+    struct AirdropProjectAccount<<PDA>> {
+      <color:DarkGreen><b>// 代表一个空投项目
+      ====
+      admin: Pubkey, <color:DarkGreen>// 空投管理员账户
+      ....
+      id: Pubkey, <color:DarkGreen>//AirdropProjectAccount 的 pda seed
+    }
+    
+
+    struct AirdropMintAccountAuthority<<PDA>>{
+      <color:DarkGreen><b>// 代表空投mint合约的authority账户
+      ====
+    }
+    AirdropProjectAccount )--> AirdropMintAccountAuthority : PDA seed
+
+
+    struct AirdropNonceBusinessAccountAuthority<<PDA>> {
+      <color:DarkGreen><b>// 代表空投nonce合约的authority账户
+      ====
+    }
+    AirdropProjectAccount )--> AirdropNonceBusinessAccountAuthority : PDA seed
   }
-  note left
-    空投合约的管理者账户
-    ----
-    创建时间：初始化时
-  end note
+
+
+  package "nonce-verify-program" {
+    struct NonceProjectAccount <<PDA>>{
+      <color:DarkGreen><b>// 代表一个nonce项目
+      ====
+      admin: Pubkey, <color:DarkGreen>// 管理账户，提款管理，注册管理（可选）
+      ....
+      id: Pubkey, <color:DarkGreen>//NonceProjectAccount 的 pda seed
+      ----
+      <color:DarkGreen><b>// PDA 账户， seed = id
+      vault: Pubkey, <color:DarkGreen>// 用于存放fee的账户， 
+    }
+
+    struct BusinessNonceProjectAccount <<PDA>> {
+      <color:DarkGreen><b>// 代表一个nonce 的 business 项目, 由项目方创建
+      ====
+      id: Pubkey, <color:DarkGreen>//NonceProjectAccount 的 pda seed
+      ....
+      authority: Pubkey, <color:DarkGreen>// 修改它所属的用户nonce时，需要签名
+    }
+    NonceProjectAccount )--> BusinessNonceProjectAccount : PDA seed
+
+
+    struct UserBusinessNonceStateAccount <<PDA>> {
+      <color:DarkGreen><b>// 代表一个用户在一个project中的nonce状态
+      ====
+      nonce: u64, <color:DarkGreen>// nonce值
+      ....
+      user: Pubkey, <color:DarkGreen>// 用户账户
+    }
+    BusinessNonceProjectAccount )--> UserBusinessNonceStateAccount : PDA seed
+  }
+
+  AirdropNonceBusinessAccountAuthority --[#Blue]-> BusinessNonceProjectAccount::authority : nonce authority
+
+  package "SPL-program" {
+    struct AnyMintAccount {
+      <color:DarkGreen><b>// 代表一个用于空投的mint合约
+      ====
+    }
+  }
+  AirdropMintAccountAuthority -[#Blue]-> AnyMintAccount : mint authority
+
+
 
 @enduml
 
@@ -29,11 +86,15 @@
 |manage|
   start
 
-  :获取空投合约的pda账户, holder 账户;
+  :airdrop-account已经准备就绪;
 
-  :财务账户向 holder 账户转入对应的ft/nft;
+  :准备待空投合约（mint-account）;
 
-  :转入时， holder 账户对应的token-account账户不存则，则创建;
+  :计算该mint合约的authority账户(这个authority账户是空投合约的pda账户);
+
+  :创建空投合约（或者，将空投合约的authority转移给给上一步计算所得的authority）;
+
+  :计算用户的待签名数据，使用airdrop-account中指定的管理账户对数据进行签名（off-sign签名）;
 
 |user|
   :拿到off-sign签名数据;

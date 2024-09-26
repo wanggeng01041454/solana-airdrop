@@ -10,3 +10,7 @@ test-ledger
 # 保存两个地址文件在repo中
 !target/deploy/nonce_verify-keypair.json
 !target/deploy/solana_airdrop-keypair.json
+
+# 绘图临时文件
+*.drawio.bkp
+*.drawio.dtmp

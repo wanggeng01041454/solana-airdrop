@@ -1,80 +1,134 @@
 @startuml 03.使用nonce-verify的业务流程
   title 使用nonce-verify的业务流程
 
-  actor user as "业务/用户"
+  actor user as "空投用户"
 
-  box "项目方"
-    participant prj_contract as "项目方-链上合约"
-    participant prj_backend as "项目方-后端"
+  participant developer as "开发者（NonceVerify管理）"
+
+  box "空投项目方"
+    participant airdrop_backend as "空投-后端"  
+
+    participant airdrop_sdk as "空投合约-SDK"
+    participant airdrop_contract as "链上空投合约\n(Airdrop合约)"
   end box
 
   box "NonceVerify"
-    participant contract as "NonceVerify合约"
-    participant sdk as "NonceVerify SDK"
+    participant nonce_verify_sdk as "NonceVerify SDK"  
+    participant nonce_verify_contract as "NonceVerify合约"
   end box
 
   autoactivate on 
 
-  == 项目注册，创建项目方账户 ==
+  == 部署后的初始化 ==
   autonumber
 
-  prj_backend -> sdk : 注册项目（合约地址， 项目authority地址）
-    sdk -> contract: 注册项目，创建项目账户
-      note over contract
-        可以根据配置控制，是否收费用;
+  developer -> nonce_verify_sdk: 创建 nonce-verify-project
+    nonce_verify_sdk -> nonce_verify_contract: 创建 nonce-verify-project
+    return
+  return
+
+  == 空投项目方创建 NonceVerify 的 BusinessProject, 进行空投初始准备 ==
+  autonumber
+
+  airdrop_backend -> airdrop_sdk: 创建 airdrop-project
+    airdrop_sdk -> airdrop_contract: 创建 airdrop-project
+    return
+  return
+
+  airdrop_backend -> airdrop_backend : 计算 nonce-business-project 的 authority
+  deactivate
+  
+  airdrop_backend -> nonce_verify_sdk : 注册 nonce-business-project 到 nonce-verify-project \
+  \n 需要填入 authority
+    nonce_verify_sdk -> nonce_verify_contract: 注册
+      note over nonce_verify_contract
+        根据NonceVerify的配置控制，是否收费用;
         ....
-        根据配置，是否需要授权
+        根据NonceVerify的配置控制，是否需要授权
       end note 
     return
   return 
 
-  == 生成 offchain-sign ==
+  == 为用户生成 offchain-sign（可选，也可以是实时生成的） ==
   autonumber
   
-  prj_backend -> sdk: 读取用户nonce(项目合约地址， 用户账户)
-    sdk -> contract: 读取用户账户数据
-    return
-    note over sdk
-      如果用户账户不存在，nonce取0；
-      ....
-      如果用户账户存在，但该项目合约不存在，则nonce取0；
-      ....
-      取用户账户数据中，该项目合约对应的nonce值；
-    end note 
+  airdrop_backend -> airdrop_sdk: 生成offchain-sign数据
+    airdrop_sdk -> nonce_verify_sdk: 读取用户nonce(项目合约地址， 用户账户)
+      nonce_verify_sdk -> nonce_verify_contract: 读取用户账户数据（user-business-nonce-state-account）
+      return
+      note over nonce_verify_sdk
+        如果用户账户不存在，nonce取0；
+        ....
+        取用户账户数据中，该项目合约对应的nonce值；
+      end note 
+    return: nonce值
 
-  return: nonce值
-
-  prj_backend -> prj_backend: 生成签名数据, 并存储
-  deactivate
-
-  == 业务使用 offchain-sign ==
-  autonumber
-
-  user -> prj_backend: 获取offchain-sign
+    airdrop_sdk -> airdrop_sdk: 合并其它信息，生成待签名数据(sign_data)
+    deactivate
   return
 
-  user -> prj_contract: 业务交易（offchain-sign数据，业务数据）
-    prj_contract -> contract: 验证nonce，并自增nonce(项目合约地址， 用户账户, nonce)
-      note over contract
-        1. 不存在的账户要创建；账户空间不足的要扩展，fee payer 由项目方指定；
-        （一般情况下是用户支付）
-        2. 需要验证项目合约的authority；
+  airdrop_backend -> airdrop_backend: 对 sign_data 进行签名，生成 signature, 并将其存储。
+  deactivate
+
+  == 空投业务使用 offchain-sign（用户即时领取场景） ==
+  autonumber
+
+  user -> airdrop_backend: 获取待签名交易数据
+    airdrop_backend -> airdrop_sdk: 生成待签名交易数据
+      airdrop_sdk -> nonce_verify_contract: 检查用户的 user-business-nonce-state-account 是否存在
+      return
+
+      airdrop_sdk -> airdrop_sdk: 如果不存在，则交易中加入创建账户的指令
+      deactivate
+
+      airdrop_sdk -> airdrop_sdk: 生成使用Ed25519合约验证签名的指令
+      deactivate
+
+      airdrop_sdk -> airdrop_sdk: 生成调用空投合约的指令
+      deactivate
+
+      note over airdrop_sdk
+        最后生成的交易指令格式如下：
         ----
-        3. 对于已经不存在的项目方地址，可以清理其对应的nonce,并复用空间；
-        尽量减少空间浪费；
+        <img: "./imgs/airdrop-design-claim指令.drawio.svg">
+      end note
+
+    return: 待签名数据
+  return
+
+  user -> user: 使用钱包签名，并发送交易
+  deactivate
+
+  user -> airdrop_contract: 业务交易（offchain-sign数据，业务数据）
+  note over airdrop_contract
+    实际上
+    ----
+    如果存在 “创建”指令，则会先创建 user-business-nonce-state-account
+    ....
+    接着，调用Ed25519指令对签名进行验证
+    ....
+    之后，才会执行到本合约的业务逻辑
+  end note
+    airdrop_contract -> nonce_verify_contract: 验证nonce，并自增nonce(项目合约地址， 用户账户, nonce)
+      note over nonce_verify_contract
+        1. 需要验证项目合约的authority；
         ----
-        4. 可以在这里收取费用；
+        2. 可以在这里收取费用；
       end note 
     return <color:Red>返回验证是否通过，验证失败交易要失败.</color>
 
-    prj_contract -> prj_contract: 执行自己的业务逻辑
+    airdrop_contract -> airdrop_contract: 验证ed25519签名数据是否和实际的签名数据匹配
+    deactivate
+
+    airdrop_contract -> airdrop_contract: 发放空投
     deactivate
   return
 
   == 其他 ==
-  note over user, contract
+  note over user, nonce_verify_contract
   1, 用户可以注销自己的nonce账户，获取账户的租金费用；但是以后再用则要创建；
   2, 项目方也可以注销自己的项目方账户
+  3, 如果nonce-project收取了费用，管理员可以提走费用
   end note 
 
 @enduml
