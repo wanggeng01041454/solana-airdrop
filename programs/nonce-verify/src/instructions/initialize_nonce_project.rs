@@ -99,10 +99,10 @@ pub struct InitializeNonceProjectAccounts<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize, Default, Debug, Clone)]
 pub struct InitializeNonceProjectParams {
     /// project-id, 用于标识 nonce-project
-    pub project_id: Pubkey,    
+    pub project_id: Pubkey,
 
     /// 注册新的 business-project 时，是否需要管理员签名授权
-    pub register_business_need_verify: bool,    
+    pub register_business_need_verify: bool,
 
     /// 业务费用
     /// 每次注册新业务时需要支付的费用

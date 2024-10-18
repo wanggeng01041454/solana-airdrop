@@ -5,6 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
+direct-distribute-airdrop = "GaHqnnZv2CeZYEA23V1zGuADSFhWnJZSmFzLeje1H2T1"
 nonce-verify = "4U17W5WH9JJQZK9HcZaD9mYhWehhBSyymAoG6gMYj5CW"
 solana_airdrop = "GMznVrvA9P4WfBzJPWq92BWmsBMQUo6pb8B7CMSvgX9n"
 
@@ -15,19 +16,18 @@ url = "https://api.apr.dev"
 cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
+[scripts]
+test = "npx vitest --run "
+
+[test]
+startup_wait = 5000
+shutdown_wait = 2000
+upgradeable = false
 
 [[test.genesis]]
 address = "4U17W5WH9JJQZK9HcZaD9mYhWehhBSyymAoG6gMYj5CW"
-# 使用.so文件在工程中的相对路径，才可以部署成功
 program = "target/deploy/nonce_verify.so"
 
 [[test.genesis]]
 address = "GMznVrvA9P4WfBzJPWq92BWmsBMQUo6pb8B7CMSvgX9n"
 program = "target/deploy/solana_airdrop.so"
-
-
-
-[scripts]
-# --run 表示不监视文件变化， 运行一次测试就退出
-# 在 vitest.config.ts 中增加配置： reporters: ['verbose']， 使得测试结果更详细
-test = "npx vitest --run "

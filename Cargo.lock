@@ -1335,6 +1335,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "direct-distribute-airdrop"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+]
+
+[[package]]
 name = "displaydoc"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
