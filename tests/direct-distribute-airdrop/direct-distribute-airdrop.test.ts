@@ -95,160 +95,160 @@ describe("direct-distribute-airdrop 合约测试", async () => {
   console.log(`create-mint-account success, mintAccountPubkey: ${mintAccountKeypair.publicKey.toBase58()}`);
 
 
-  // test("验证 singleton-manage-project 的管理员切换", async () => {
+  test("验证 singleton-manage-project 的管理员切换", async () => {
 
-  //   // 获取当前管理员
-  //   const curState = await airdropProvider.getSingletonManageProjectAccount();
+    // 获取当前管理员
+    const curState = await airdropProvider.getSingletonManageProjectAccount();
 
-  //   expect(curState.manageAdmin.toBase58()).toBe(singletonManageProjectAdminKeypair.publicKey.toBase58());
+    expect(curState.manageAdmin.toBase58()).toBe(singletonManageProjectAdminKeypair.publicKey.toBase58());
 
-  //   // 新的管理员
-  //   const newManageAdminKeypair = Keypair.generate();
-
-
-  //   // 切换管理员
-  //   const txId = await airdropProvider.UpdateSingletonManageProjectAction({
-  //     buildType: BuildType.SendAndFinalizeTx,
-  //     cuPrice: 1 * 10 ** 6,
-  //     cuFactor: DEFAULT_CU_FACTOR,
-  //     payer: GlobalPayerKeypair.publicKey,
-  //     payerKeypair: GlobalPayerKeypair,
-
-  //     originManageAdmin: singletonManageProjectAdminKeypair.publicKey,
-  //     originManageAdminKeypair: singletonManageProjectAdminKeypair,
-
-  //     newManageAdmin: newManageAdminKeypair.publicKey,
-  //   });
-
-  //   const newState = await airdropProvider.getSingletonManageProjectAccount();
-  //   expect(newState.manageAdmin.toBase58()).toBe(newManageAdminKeypair.publicKey.toBase58());
-  //   expect(newState.userFee).toBe(curState.userFee);
-  //   expect(newState.userFee).toBe(userFee);
-
-  //   // 恢复管理员
-  //   const txId2 = await airdropProvider.UpdateSingletonManageProjectAction({
-  //     buildType: BuildType.SendAndFinalizeTx,
-  //     cuPrice: 1 * 10 ** 6,
-  //     cuFactor: DEFAULT_CU_FACTOR,
-  //     payer: GlobalPayerKeypair.publicKey,
-  //     payerKeypair: GlobalPayerKeypair,
-
-  //     originManageAdmin: newManageAdminKeypair.publicKey,
-  //     originManageAdminKeypair: newManageAdminKeypair,
-
-  //     newManageAdmin: singletonManageProjectAdminKeypair.publicKey,
-  //   });
-
-  //   const newState2 = await airdropProvider.getSingletonManageProjectAccount();
-  //   expect(newState2.manageAdmin.toBase58()).toBe(singletonManageProjectAdminKeypair.publicKey.toBase58());
-  // });
-
-  // // 验证 airdrop-project 的管理员切换
-  // test("验证  airdrop-project 的管理员切换", async () => {
-
-  //   // 获取当前管理员
-  //   const curState = await airdropProvider.getAirdropProjectAccount(
-  //     airdropProjectAccountKeypair.publicKey
-  //   );
-
-  //   expect(curState.ddaAirdropAdmin.toBase58()).toBe(airdropAdminKeypair.publicKey.toBase58());
-
-  //   // 新的管理员
-  //   const newManageAdminKeypair = Keypair.generate();
+    // 新的管理员
+    const newManageAdminKeypair = Keypair.generate();
 
 
-  //   // 切换管理员
-  //   const txId = await airdropProvider.updateDdaAirdropProjectAction({
-  //     buildType: BuildType.SendAndFinalizeTx,
-  //     cuPrice: 1 * 10 ** 6,
-  //     cuFactor: DEFAULT_CU_FACTOR,
-  //     payer: GlobalPayerKeypair.publicKey,
-  //     payerKeypair: GlobalPayerKeypair,
+    // 切换管理员
+    const txId = await airdropProvider.UpdateSingletonManageProjectAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+      payer: GlobalPayerKeypair.publicKey,
+      payerKeypair: GlobalPayerKeypair,
 
-  //     airdropProjectPubkey: airdropProjectAccountKeypair.publicKey,
+      originManageAdmin: singletonManageProjectAdminKeypair.publicKey,
+      originManageAdminKeypair: singletonManageProjectAdminKeypair,
 
-  //     originAirdroptAdminPubkey: airdropAdminKeypair.publicKey,
-  //     originAirdropProjectAdminKeypair: airdropAdminKeypair,
+      newManageAdmin: newManageAdminKeypair.publicKey,
+    });
 
-  //     newAirdropProjectAdminPubkey: newManageAdminKeypair.publicKey,
-  //   });
+    const newState = await airdropProvider.getSingletonManageProjectAccount();
+    expect(newState.manageAdmin.toBase58()).toBe(newManageAdminKeypair.publicKey.toBase58());
+    expect(newState.userFee).toBe(curState.userFee);
+    expect(newState.userFee).toBe(userFee);
 
-  //   const newState = await airdropProvider.getAirdropProjectAccount(
-  //     airdropProjectAccountKeypair.publicKey
-  //   );
-  //   expect(newState.ddaAirdropAdmin.toBase58()).toBe(newManageAdminKeypair.publicKey.toBase58());
+    // 恢复管理员
+    const txId2 = await airdropProvider.UpdateSingletonManageProjectAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+      payer: GlobalPayerKeypair.publicKey,
+      payerKeypair: GlobalPayerKeypair,
 
-  //   // 恢复管理员
-  //   const txId2 = await airdropProvider.updateDdaAirdropProjectAction({
-  //     buildType: BuildType.SendAndFinalizeTx,
-  //     cuPrice: 1 * 10 ** 6,
-  //     cuFactor: DEFAULT_CU_FACTOR,
-  //     payer: GlobalPayerKeypair.publicKey,
-  //     payerKeypair: GlobalPayerKeypair,
+      originManageAdmin: newManageAdminKeypair.publicKey,
+      originManageAdminKeypair: newManageAdminKeypair,
 
-  //     airdropProjectPubkey: airdropProjectAccountKeypair.publicKey,
+      newManageAdmin: singletonManageProjectAdminKeypair.publicKey,
+    });
 
-  //     originAirdroptAdminPubkey: newManageAdminKeypair.publicKey,
-  //     originAirdropProjectAdminKeypair: newManageAdminKeypair,
+    const newState2 = await airdropProvider.getSingletonManageProjectAccount();
+    expect(newState2.manageAdmin.toBase58()).toBe(singletonManageProjectAdminKeypair.publicKey.toBase58());
+  });
 
-  //     newAirdropProjectAdminPubkey: airdropAdminKeypair.publicKey,
-  //   });
+  // 验证 airdrop-project 的管理员切换
+  test("验证  airdrop-project 的管理员切换", async () => {
 
-  //   const newState2 = await airdropProvider.getAirdropProjectAccount(
-  //     airdropProjectAccountKeypair.publicKey
-  //   );
-  //   expect(newState2.ddaAirdropAdmin.toBase58()).toBe(airdropAdminKeypair.publicKey.toBase58());
-  // });
+    // 获取当前管理员
+    const curState = await airdropProvider.getAirdropProjectAccount(
+      airdropProjectAccountKeypair.publicKey
+    );
 
-  // // 验证转移mint-authority， 再转移回去
-  // test("验证 转移mint-authority， 再转移回去", async () => {
+    expect(curState.ddaAirdropAdmin.toBase58()).toBe(airdropAdminKeypair.publicKey.toBase58());
 
-  //   // 获取当前mint-account信息
-  //   const curMintAccount = await Token.getMint(connection, mintAccountKeypair.publicKey);
-  //   expect(curMintAccount.mintAuthority?.toBase58()).toBe(mintAuthorityPubkey.toBase58());
+    // 新的管理员
+    const newManageAdminKeypair = Keypair.generate();
 
-  //   // 新的管理员
-  //   const aliceMintAdminKeypair = Keypair.generate();
 
-  //   // 切换管理员
-  //   const txId = await airdropProvider.transferMintAuthorityAction({
-  //     buildType: BuildType.SendAndFinalizeTx,
-  //     cuPrice: 1 * 10 ** 6,
-  //     cuFactor: DEFAULT_CU_FACTOR,
-  //     payer: GlobalPayerKeypair.publicKey,
-  //     payerKeypair: GlobalPayerKeypair,
+    // 切换管理员
+    const txId = await airdropProvider.updateDdaAirdropProjectAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+      payer: GlobalPayerKeypair.publicKey,
+      payerKeypair: GlobalPayerKeypair,
 
-  //     airdropProjectPubkey: airdropProjectAccountKeypair.publicKey,
-  //     airdropAdminPubkey: airdropAdminKeypair.publicKey,
-  //     airdropAdminKeypair: airdropAdminKeypair,
+      airdropProjectPubkey: airdropProjectAccountKeypair.publicKey,
 
-  //     mintAccountPubkey: mintAccountKeypair.publicKey,
-  //     newMintAuthority: aliceMintAdminKeypair.publicKey,
-  //   });
+      originAirdroptAdminPubkey: airdropAdminKeypair.publicKey,
+      originAirdropProjectAdminKeypair: airdropAdminKeypair,
 
-  //   const newMintAccount = await Token.getMint(connection, mintAccountKeypair.publicKey);
-  //   expect(newMintAccount.mintAuthority?.toBase58()).toBe(aliceMintAdminKeypair.publicKey.toBase58());
+      newAirdropProjectAdminPubkey: newManageAdminKeypair.publicKey,
+    });
 
-  //   // 恢复管理员
-  //   {
-  //     const ix = Token.createSetAuthorityInstruction(
-  //       mintAccountKeypair.publicKey,
-  //       aliceMintAdminKeypair.publicKey,
-  //       Token.AuthorityType.MintTokens,
-  //       mintAuthorityPubkey,
-  //     );
+    const newState = await airdropProvider.getAirdropProjectAccount(
+      airdropProjectAccountKeypair.publicKey
+    );
+    expect(newState.ddaAirdropAdmin.toBase58()).toBe(newManageAdminKeypair.publicKey.toBase58());
 
-  //     const txId2 = await mySendAndFinalizeTransaction({
-  //       connection: connection,
-  //       ixs: [ix],
-  //       payer: GlobalPayerKeypair.publicKey,
-  //       cuPrice: 1 * 10 ** 6,
-  //       signers: [GlobalPayerKeypair, aliceMintAdminKeypair],
-  //     })
-  //   }
-  //   const new2MintAccount = await Token.getMint(connection, mintAccountKeypair.publicKey);
-  //   expect(new2MintAccount.mintAuthority?.toBase58()).toBe(mintAuthorityPubkey.toBase58());
-  // });
+    // 恢复管理员
+    const txId2 = await airdropProvider.updateDdaAirdropProjectAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+      payer: GlobalPayerKeypair.publicKey,
+      payerKeypair: GlobalPayerKeypair,
+
+      airdropProjectPubkey: airdropProjectAccountKeypair.publicKey,
+
+      originAirdroptAdminPubkey: newManageAdminKeypair.publicKey,
+      originAirdropProjectAdminKeypair: newManageAdminKeypair,
+
+      newAirdropProjectAdminPubkey: airdropAdminKeypair.publicKey,
+    });
+
+    const newState2 = await airdropProvider.getAirdropProjectAccount(
+      airdropProjectAccountKeypair.publicKey
+    );
+    expect(newState2.ddaAirdropAdmin.toBase58()).toBe(airdropAdminKeypair.publicKey.toBase58());
+  });
+
+  // 验证转移mint-authority， 再转移回去
+  test("验证 转移mint-authority， 再转移回去", async () => {
+
+    // 获取当前mint-account信息
+    const curMintAccount = await Token.getMint(connection, mintAccountKeypair.publicKey);
+    expect(curMintAccount.mintAuthority?.toBase58()).toBe(mintAuthorityPubkey.toBase58());
+
+    // 新的管理员
+    const aliceMintAdminKeypair = Keypair.generate();
+
+    // 切换管理员
+    const txId = await airdropProvider.transferMintAuthorityAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+      payer: GlobalPayerKeypair.publicKey,
+      payerKeypair: GlobalPayerKeypair,
+
+      airdropProjectPubkey: airdropProjectAccountKeypair.publicKey,
+      airdropAdminPubkey: airdropAdminKeypair.publicKey,
+      airdropAdminKeypair: airdropAdminKeypair,
+
+      mintAccountPubkey: mintAccountKeypair.publicKey,
+      newMintAuthority: aliceMintAdminKeypair.publicKey,
+    });
+
+    const newMintAccount = await Token.getMint(connection, mintAccountKeypair.publicKey);
+    expect(newMintAccount.mintAuthority?.toBase58()).toBe(aliceMintAdminKeypair.publicKey.toBase58());
+
+    // 恢复管理员
+    {
+      const ix = Token.createSetAuthorityInstruction(
+        mintAccountKeypair.publicKey,
+        aliceMintAdminKeypair.publicKey,
+        Token.AuthorityType.MintTokens,
+        mintAuthorityPubkey,
+      );
+
+      const txId2 = await mySendAndFinalizeTransaction({
+        connection: connection,
+        ixs: [ix],
+        payer: GlobalPayerKeypair.publicKey,
+        cuPrice: 1 * 10 ** 6,
+        signers: [GlobalPayerKeypair, aliceMintAdminKeypair],
+      })
+    }
+    const new2MintAccount = await Token.getMint(connection, mintAccountKeypair.publicKey);
+    expect(new2MintAccount.mintAuthority?.toBase58()).toBe(mintAuthorityPubkey.toBase58());
+  });
 
 
   // 验证执行空投，尝试空投可以进行多少次
