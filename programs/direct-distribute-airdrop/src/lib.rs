@@ -12,7 +12,7 @@ declare_id!("GaHqnnZv2CeZYEA23V1zGuADSFhWnJZSmFzLeje1H2T1");
 pub mod direct_distribute_airdrop {
     use super::*;
 
-    ///================== singleton_manage_project ==================///
+    //================== singleton_manage_project ==================//
     /// 初始化-单例管理项目
     pub fn init_singleton_manage_project(
         ctx: Context<InitSingletonManageProjectAccounts>,
@@ -22,7 +22,7 @@ pub mod direct_distribute_airdrop {
     }
 
     /// 更新-单例管理项目
-    pub fn update_manager_singleton_project(
+    pub fn update_singleton_manage_project(
         ctx: Context<UpdateSingletonManageProjectAccounts>,
         params: UpdateSingletonManageProjectParams,
     ) -> Result<()> {
@@ -34,7 +34,7 @@ pub mod direct_distribute_airdrop {
         instructions::claim_fee(ctx, params)
     }
 
-    ///================== dda_airdrop_project ==================///
+    //================== dda_airdrop_project ==================//
 
     /// 初始化（创建）-直接分发空投项目
     pub fn init_dda_airdrop_project(ctx: Context<InitDdaAirdropProjectAccounts>) -> Result<()> {
@@ -61,6 +61,4 @@ pub mod direct_distribute_airdrop {
     ) -> Result<()> {
         instructions::dda_airdrop_ft(ctx, params)
     }
-
-    
 }

@@ -7,9 +7,10 @@ test-ledger
 .yarn
 
 
-# 保存两个地址文件在repo中
+# 保存三个地址文件在repo中
 !target/deploy/nonce_verify-keypair.json
 !target/deploy/solana_airdrop-keypair.json
+!target/deploy/direct_distribute_airdrop-keypair.json
 
 # 绘图临时文件
 *.drawio.bkp

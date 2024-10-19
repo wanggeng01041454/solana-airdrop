@@ -20,7 +20,10 @@ export interface BuildActionResultParams extends BaseActionParams {
   ixs: TransactionInstruction[],
   payer: PublicKey,
   signers?: Keypair[]
+  tryToSetMaxCu?: boolean  // 尝试设置最大的cu
 }
+
+const MAX_COMPUTE_UNIT_LIMIT: number = 1400000;
 
 /**
  * @description 构建 ActionResult, 该函数是各个Action的通用函数
@@ -100,10 +103,21 @@ export async function mySendAndConfirmTransaction(
     cuPrice?: number, // cu 价格, 为空时，则不附加cu限制
     cuFactor?: number, // cu 估算因子, 默认 1.2
     signers?: Keypair[]
+    tryToSetMaxCu?: boolean  // 尝试设置最大的cu， 这个在simulate时就要设置
+  }) {
+  const { connection, ixs, payer, cuPrice, cuFactor, signers, tryToSetMaxCu } = params;
+
+  let tx: VersionedTransaction;
+  if (tryToSetMaxCu !== undefined && tryToSetMaxCu === true) {
+    const tmpIxs: TransactionInstruction[] = [];
+
+    tmpIxs.push(ComputeBudgetProgram.setComputeUnitLimit({ units: MAX_COMPUTE_UNIT_LIMIT }))
+    tmpIxs.push(...ixs);
+
+    tx = await buildTransaction(connection, tmpIxs, payer);
+  } else {
+    tx = await buildTransaction(connection, ixs, payer);
   }
-) {
-  const { connection, ixs, payer, cuPrice, cuFactor, signers } = params;
-  let tx = await buildTransaction(connection, ixs, payer);
 
   // 如果设置了 cuPrice，则要加 cu 限制
   if (cuPrice) {
@@ -165,6 +179,7 @@ export async function mySendAndFinalizeTransaction(params: {
   payer: PublicKey,
   cuPrice?: number,
   signers?: Keypair[]
+  tryToSetMaxCu?: boolean
 }) {
   const txId = await mySendAndConfirmTransaction(params);
   await waitTransactionFinalized(params.connection, txId);

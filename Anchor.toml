@@ -31,3 +31,8 @@ program = "target/deploy/nonce_verify.so"
 [[test.genesis]]
 address = "GMznVrvA9P4WfBzJPWq92BWmsBMQUo6pb8B7CMSvgX9n"
 program = "target/deploy/solana_airdrop.so"
+
+
+[[test.genesis]]
+address = "GaHqnnZv2CeZYEA23V1zGuADSFhWnJZSmFzLeje1H2T1"
+program = "target/deploy/direct_distribute_airdrop.so"
