@@ -10,9 +10,10 @@ import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import { AirdropReceiverInfo, DirectDistributeAirdropProvider } from "../../api/DirectDistributeAirdropProvider";
 
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { initNonceProjectAndRegisterBusinessProject4Test, runAppAndGetStdout, transferSol } from "../utils";
 import { BuildType, DEFAULT_CU_FACTOR } from "../../api/baseTypes";
 import { mySendAndFinalizeTransaction } from "../../api/utils";
+import { transferSol } from "../utils";
+
 
 
 
@@ -284,7 +285,8 @@ describe("direct-distribute-airdrop 合约测试", async () => {
     }
 
     // 便捷空投函数
-    const airdropFunction = async (receiverInfoArray : AirdropReceiverInfo[]) => {
+    const airdropFunction = async (receiverInfoArray: AirdropReceiverInfo[], lookupTableAccountPubkey?: PublicKey) => {
+
       const txId = await airdropProvider.doDirectAirdropFtAction({
         buildType: BuildType.SendAndFinalizeTx,
         cuPrice: 1 * 10 ** 6,
@@ -298,6 +300,8 @@ describe("direct-distribute-airdrop 合约测试", async () => {
 
         mintAccountPubkey: mintAccountKeypair.publicKey,
         receivers: receiverInfoArray,
+
+        addressLookupTablePubkeyArray: lookupTableAccountPubkey ? [lookupTableAccountPubkey] : undefined,
       });
 
       return txId;
@@ -305,7 +309,7 @@ describe("direct-distribute-airdrop 合约测试", async () => {
 
     // a. b 账户进行空投
     {
-      const receivers : AirdropReceiverInfo[] = [];
+      const receivers: AirdropReceiverInfo[] = [];
 
       receivers.push({
         receiver: aKeypair.publicKey,
@@ -326,12 +330,96 @@ describe("direct-distribute-airdrop 合约测试", async () => {
       expect(bTokenAccount.amount.toString(10)).toBe(bCount.toString());
     }
 
-    // 尝试看，可以进行多少次空投, 从10次开始
-    let count = 3; 
-    while(true) {
-      
-      const receivers : AirdropReceiverInfo[] = [];
-      for(let i=0; i<count; i++) {
+    // 构造 lookup-table
+    const lookupTableAdminKeypair = Keypair.generate();
+    const buildLookupTableResult = await airdropProvider.buildAirdropFtLookupTableAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+      payer: GlobalPayerKeypair.publicKey,
+      payerKeypair: GlobalPayerKeypair,
+
+      altAuthorityPubkey: lookupTableAdminKeypair.publicKey,
+      altAuthorityKeypair: lookupTableAdminKeypair,
+
+      airdropProjectPubkey: airdropProjectAccountKeypair.publicKey,
+
+      mintAccountPubkey: mintAccountKeypair.publicKey,
+      airdropPayerPubkey: GlobalPayerKeypair.publicKey,
+    });
+    console.log(`buildAirdropFtLookupTableAction transaction txId: ${buildLookupTableResult.actionResult}, has finitialized`);
+
+    // 打印lookup-table
+    {
+      const altAccount = (await connection.getAddressLookupTable(buildLookupTableResult.addressLookupTablePubkey)).value;
+
+      expect(altAccount.state.authority?.toBase58()).toBe(lookupTableAdminKeypair.publicKey.toBase58());
+
+      const addrArray = altAccount.state.addresses.map((item) => item.toBase58());
+      console.log(`lookup-table: ${JSON.stringify(addrArray, null, 2)}`);
+
+      expect(addrArray.includes(mintAccountKeypair.publicKey.toBase58())).toBeTruthy();
+      expect(addrArray.includes(GlobalPayerKeypair.publicKey.toBase58())).toBeTruthy();
+      expect(addrArray.includes(mintAuthorityPubkey.toBase58())).toBeTruthy();
+    }
+    const addressLookupTablePubkey = buildLookupTableResult.addressLookupTablePubkey;
+
+    // a. b 账户进行空投
+    {
+      console.log(`===开始进行空投测试，使用lookup-table`);
+
+      // 计算 a,b 空投前的余额
+      let aOldAmount: bigint = BigInt(0);
+      {
+        try {
+          const tmpTokenAccount = await Token.getAccount(connection, aAtaAccount);
+          aOldAmount = tmpTokenAccount.amount;
+        } catch (e) {
+          aOldAmount = BigInt(0);
+        }
+      }
+      let bOldAmount: bigint = BigInt(0);
+      {
+        try {
+          const tmpTokenAccount = await Token.getAccount(connection, bAtaAccount);
+          bOldAmount = tmpTokenAccount.amount;
+        } catch (e) {
+          bOldAmount = BigInt(0);
+        }
+      }
+
+
+      const receivers: AirdropReceiverInfo[] = [];
+
+      receivers.push({
+        receiver: aKeypair.publicKey,
+        amount: new BN(aCount),
+      });
+      receivers.push({
+        receiver: bKeypair.publicKey,
+        amount: new BN(bCount),
+      });
+
+      const txId = await airdropFunction(receivers, addressLookupTablePubkey);
+      console.log(`===带 lookup-table 空投测试成功，txId: ${txId}`);
+
+      aOldAmount += BigInt(aCount);
+      bOldAmount += BigInt(bCount);
+
+      const aTokenAccount = await Token.getAccount(connection, aAtaAccount);
+      expect(aTokenAccount.amount.toString(10)).toBe(aOldAmount.toString());
+
+      const bTokenAccount = await Token.getAccount(connection, bAtaAccount);
+      expect(bTokenAccount.amount.toString(10)).toBe(bOldAmount.toString());
+    }
+
+
+    // 尝试看，可以进行多少次空投, 从5次开始
+    let count = 5;
+    while (true) {
+
+      const receivers: AirdropReceiverInfo[] = [];
+      for (let i = 0; i < count; i++) {
         const keypair = Keypair.generate();
         receivers.push({
           receiver: keypair.publicKey,
@@ -343,7 +431,7 @@ describe("direct-distribute-airdrop 合约测试", async () => {
 
       try {
         const txId = await airdropFunction(receivers);
-      } catch(e) {
+      } catch (e) {
         console.log(`=====================================尝试空投 ${count} 次，失败，原因:`);
         console.dir(e);
         break;
@@ -352,8 +440,94 @@ describe("direct-distribute-airdrop 合约测试", async () => {
 
       count += 1;
     }
+
+    // 使用 lookup-table 尝试看，可以进行多少次空投, 从5次开始
+    count = 5;
+    while (true) {
+
+      const receivers: AirdropReceiverInfo[] = [];
+      for (let i = 0; i < count; i++) {
+        const keypair = Keypair.generate();
+        receivers.push({
+          receiver: keypair.publicKey,
+          amount: new BN(100),
+        });
+      }
+
+      console.log(`==============尝试空投(使用lookup-table) ${receivers.length} 次`);
+
+      try {
+        const txId = await airdropFunction(receivers, addressLookupTablePubkey);
+      } catch (e) {
+        console.log(`=====================================尝试空投(使用lookup-table) ${count} 次，失败，原因:`);
+        console.dir(e);
+        break;
+      }
+      console.log(`==============尝试空投(使用lookup-table) ${count} 次，成功`);
+
+      count += 1;
+    }
+
   });
 
 
+  test("尝试重复初始化 singletone-mange-project 会失败", async () => {
+
+    const tmpManageAdminKeypair = Keypair.generate();
+
+    let e: any = undefined;
+    // 初始化 singleton-manage-project
+    try {
+      const txId = await airdropProvider.initSingletonManageProjectAction({
+        buildType: BuildType.SendAndFinalizeTx,
+        cuPrice: 1 * 10 ** 6,
+        cuFactor: DEFAULT_CU_FACTOR,
+        payer: GlobalPayerKeypair.publicKey,
+        payerKeypair: GlobalPayerKeypair,
+        manageAdmin: tmpManageAdminKeypair.publicKey,
+        manageAdminKeypair: tmpManageAdminKeypair,
+        userFee: userFee
+      });
+    } catch (err) {
+      e = err;
+    }
+    expect(e).not.toBeUndefined();
+    console.dir(e);
+  });
+
+
+  test("能够成功提取fee, 且额度正确", async () => {
+
+    const aliceKeypair = Keypair.generate();
+    // 给alice 1 sol
+    const txId1 = await transferSol({
+      connection: connection,
+      fromKeypair: GlobalPayerKeypair,
+      toPubkey: aliceKeypair.publicKey,
+      amountInSol: 1,
+    });
+
+    const beforeBalance = await connection.getBalance(aliceKeypair.publicKey);
+
+    const claimAmount = 10; // 10 个 lamport, 之前的空投肯定有 10 个 lamport了
+
+    const txId = await airdropProvider.claimFeeAction({
+      buildType: BuildType.SendAndFinalizeTx,
+      cuPrice: 1 * 10 ** 6,
+      cuFactor: DEFAULT_CU_FACTOR,
+      payer: GlobalPayerKeypair.publicKey,
+      payerKeypair: GlobalPayerKeypair,
+
+      manageAdminPubkey: singletonManageProjectAdminKeypair.publicKey,
+      manageAdminKeypair: singletonManageProjectAdminKeypair,
+      receiver: aliceKeypair.publicKey,
+      amount: new BN(claimAmount),
+    });
+
+    const afterBalance = await connection.getBalance(aliceKeypair.publicKey);
+    console.log(` alice's beforeBalance: ${beforeBalance}, afterBalance: ${afterBalance}`);
+
+    expect(afterBalance - beforeBalance).toBe(claimAmount);
+  });
 
 });

@@ -1,10 +1,14 @@
 import {
   AccountMeta,
+  AddressLookupTableAccount,
+  AddressLookupTableProgram,
   Commitment,
+  ComputeBudgetProgram,
   Connection,
   Ed25519Program,
   Keypair,
   PublicKey,
+  SystemProgram,
   TransactionInstruction
 } from "@solana/web3.js";
 
@@ -23,10 +27,8 @@ import {
 } from "./utils";
 
 import { DirectDistributeAirdrop } from "../target/types/direct_distribute_airdrop";
-
 import DirectDistributeAirdropIDL from "../target/idl/direct_distribute_airdrop.json";
 
-const MAX_AIRDROP_IN_ONE_TX = 8;
 
 // 合约接口类型定义
 export type ProgramInitSingletonManageProjectParams = anchor.IdlTypes<DirectDistributeAirdrop>["initSingletonManageProjectParams"];
@@ -88,11 +90,11 @@ export interface ClaimFeeActionParams extends BaseActionParams {
   payerKeypair?: Keypair,
 
   // 管理员, 
-  manageAdmin: PublicKey,
+  manageAdminPubkey: PublicKey,
   manageAdminKeypair?: Keypair,
 
-  // 费用接收账户
-  feeReceiver: PublicKey,
+  // claim费用时，接收资金的账户
+  receiver: PublicKey,
 
   // 给每个用户空投需要支付的费用
   amount: anchor.BN,
@@ -192,9 +194,39 @@ export interface AirdropFtActionParams extends BaseActionParams {
 
   // 空投的接收者信息
   receivers: AirdropReceiverInfo[],
+
+  // 使用 addressLookupTables , 可选参数
+  addressLookupTablePubkeyArray?: PublicKey[]
 }
 
-//todo: 记录一次最多空投多少个
+// 在不使用 lookup table 的情况下，最多能空投的个数
+const MAX_AIRDROP_IN_ONE_TX = 8;
+
+// 在使用 lookup table 存放所有 非空投地址的情况下，最多能空投的个数
+const MAX_AIRDROP_IN_ONE_TX_WITH_LOOKUP_TABLE = 10;
+
+/**
+ * @description 构建空投 FT 除空投地址外的 lookup table 的参数
+ * 特别说明： 所有的 *Keypair参数，都是可选的，只有在 buildType 为 SendAndFinalizeTx 或 SendAndConfirmTx 时，才需要传入
+ */
+export interface BuildAirdropFtLookupTableActionParams extends BaseActionParams {
+  // 交易费支付者
+  payer: PublicKey,
+  payerKeypair?: Keypair,
+
+  // address-lookup-table 的 管理者地址
+  altAuthorityPubkey: PublicKey,
+  altAuthorityKeypair?: Keypair,
+
+  // 待加入 lookup table 的空投项目的地址
+  airdropProjectPubkey: PublicKey,
+
+  // 待加入 lookup table 的 mint-account 的地址
+  mintAccountPubkey: PublicKey,
+
+  // 待加入 lookup table 的空投 payer 的地址
+  airdropPayerPubkey?: PublicKey,
+}
 
 
 const DIRECT_DISTRIBUTE_AIRDROP_MANAGER_SEED = Buffer.from("dda_manager");
@@ -330,8 +362,8 @@ export class DirectDistributeAirdropProvider {
 
     // optional 参数，不需要时要填入 null
     const updateSingletonManageProjectParams: ProgramUpdateSingletonManageProjectParams = {
-      newManageAdmin: params.newManageAdmin? params.newManageAdmin : null,
-      newUserFee: params.newUserFee? params.newUserFee : null,
+      newManageAdmin: params.newManageAdmin ? params.newManageAdmin : null,
+      newUserFee: params.newUserFee ? params.newUserFee : null,
     };
 
     const accounts = {
@@ -369,8 +401,8 @@ export class DirectDistributeAirdropProvider {
 
     const accounts = {
       payer: params.payer,
-      manageAdmin: params.manageAdmin,
-      feeReceiver: params.feeReceiver,
+      manageAdmin: params.manageAdminPubkey,
+      receiver: params.receiver,
     }
     // 构造指令
     const ix = await this.program.methods
@@ -558,7 +590,90 @@ export class DirectDistributeAirdropProvider {
       tryToSetMaxCu: true
     };
 
+    // 如果使用了 addressLookupTable, 则需要将其加入到 buildParams 中
+    if (params.addressLookupTablePubkeyArray) {
+      buildParams.addressLookupTables = [];
+      for (const alt of params.addressLookupTablePubkeyArray) {
+        const table = (await this.connection.getAddressLookupTable(alt)).value;
+        buildParams.addressLookupTables.push(table);
+      }
+    }
+
     return await buildActionResult(buildParams);
+  }
+
+
+  /**
+   * @description 创建 airdrop 的lookup table
+   * 将除被空投地址外的所有相关地址都存放在 lookup table 中， 以减少交易的大小
+   * 本函数会一次性将包括mint地址在内的所有相关地址都存放在lookup table中
+   * 
+   * 如如果后面用其他mint账户进行空投时，可以复用该look-up table，也可以创建新的lookup table
+   * @param params 
+   */
+  public async buildAirdropFtLookupTableAction(params: BuildAirdropFtLookupTableActionParams): Promise<{
+    actionResult: ActionResult,
+    addressLookupTablePubkey: PublicKey
+  }> {
+    // 所有待加入地址的lookup table
+    const addressSet = new Set<PublicKey>();
+
+    // 所有相关的 program 地址
+    addressSet.add(ComputeBudgetProgram.programId);
+    addressSet.add(SystemProgram.programId);
+    addressSet.add(Token.TOKEN_PROGRAM_ID);
+    addressSet.add(Token.ASSOCIATED_TOKEN_PROGRAM_ID);
+
+    // 按合约中出现的顺序添加
+    if (params.airdropPayerPubkey) {
+      addressSet.add(params.airdropPayerPubkey);
+    }
+    addressSet.add(this.findSingletonManageProjectAddress());
+    addressSet.add(this.findSingletonFeeReceiverAddress());
+
+    addressSet.add(params.airdropProjectPubkey);
+    const airdropProjectAccount = await this.getAirdropProjectAccount(params.airdropProjectPubkey);
+    addressSet.add(airdropProjectAccount.ddaAirdropAdmin);
+
+    addressSet.add(params.mintAccountPubkey);
+    addressSet.add(this.findAirdropMintAuthorityAddress({
+      airdropProjectPubkey: params.airdropProjectPubkey,
+      mintAccountPubkey: params.mintAccountPubkey
+    }));
+
+    // 这里必须要用 'finalized'， 确保是有区块的slot
+    // 参考： https://solana.stackexchange.com/questions/8642/creating-address-lookup-table-in-localnet-fails-with-invalid-instruction-data
+    const recentSlot = await this.connection.getSlot('finalized');
+    const [ix1, altAccountPubkey] = AddressLookupTableProgram.createLookupTable({
+      payer: params.payer,
+      authority: params.altAuthorityPubkey,
+      recentSlot: recentSlot
+    });
+
+    const ix2 = AddressLookupTableProgram.extendLookupTable({
+      lookupTable: altAccountPubkey,
+      authority: params.altAuthorityPubkey,
+      payer: params.payer,
+      addresses: Array.from(addressSet)
+    });
+
+    const buildParams: BuildActionResultParams = {
+      buildType: params.buildType,
+      cuPrice: params.cuPrice,
+      cuFactor: params.cuFactor,
+
+      connection: this.connection,
+      ixs: [ix1, ix2],
+      payer: params.payer,
+      signers: [params.payerKeypair, params.altAuthorityKeypair]
+    };
+
+    const actionResult = await buildActionResult(buildParams);
+
+    return {
+      actionResult,
+      addressLookupTablePubkey: altAccountPubkey
+    };
   }
 }
 

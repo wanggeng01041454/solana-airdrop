@@ -5,7 +5,8 @@ import {
   TransactionInstruction,
   TransactionMessage,
   VersionedTransaction,
-  ComputeBudgetProgram
+  ComputeBudgetProgram,
+  AddressLookupTableAccount
 } from "@solana/web3.js";
 
 import {
@@ -21,6 +22,7 @@ export interface BuildActionResultParams extends BaseActionParams {
   payer: PublicKey,
   signers?: Keypair[]
   tryToSetMaxCu?: boolean  // 尝试设置最大的cu
+  addressLookupTables?: AddressLookupTableAccount[] // 可选的使用 AddressLookupTable
 }
 
 const MAX_COMPUTE_UNIT_LIMIT: number = 1400000;
@@ -36,11 +38,21 @@ export async function buildActionResult(param: BuildActionResultParams): Promise
       return param.ixs;
     }
     case BuildType.VersionMsg: {
-      const tx = await buildTransaction(param.connection, param.ixs, param.payer);
+      const tx = await buildTransaction({
+        connection: param.connection,
+        ixs: param.ixs,
+        payer: param.payer,
+        addressLookupTables: param.addressLookupTables
+      });
       return tx.message;
     }
     case BuildType.VersionTx: {
-      return await buildTransaction(param.connection, param.ixs, param.payer);
+      return await buildTransaction({
+        connection: param.connection,
+        ixs: param.ixs,
+        payer: param.payer,
+        addressLookupTables: param.addressLookupTables
+      });
     }
     case BuildType.SendAndConfirmTx: {
       return await mySendAndConfirmTransaction(param);
@@ -61,14 +73,21 @@ export async function buildActionResult(param: BuildActionResultParams): Promise
  * @param payer 
  * @returns 
  */
-export async function buildTransaction(connection: Connection, ixs: TransactionInstruction[], payer: PublicKey) {
+export async function buildTransaction(params: {
+  connection: Connection;
+  ixs: TransactionInstruction[]
+  payer: PublicKey
+  addressLookupTables?: AddressLookupTableAccount[]
+}) {
+  const { connection, ixs, payer, addressLookupTables } = params;
+
   const latestBlockHash = await connection.getLatestBlockhash("confirmed");
 
   const message = new TransactionMessage({
     payerKey: payer,
     instructions: ixs,
     recentBlockhash: latestBlockHash.blockhash,
-  }).compileToV0Message();
+  }).compileToV0Message(addressLookupTables);
 
   const tx = new VersionedTransaction(message);
 
@@ -104,19 +123,30 @@ export async function mySendAndConfirmTransaction(
     cuFactor?: number, // cu 估算因子, 默认 1.2
     signers?: Keypair[]
     tryToSetMaxCu?: boolean  // 尝试设置最大的cu， 这个在simulate时就要设置
+    addressLookupTables?: AddressLookupTableAccount[] // 可选的使用 AddressLookupTable
   }) {
-  const { connection, ixs, payer, cuPrice, cuFactor, signers, tryToSetMaxCu } = params;
+  const { connection, ixs, payer, cuPrice, cuFactor, signers, tryToSetMaxCu, addressLookupTables } = params;
 
   let tx: VersionedTransaction;
-  if (tryToSetMaxCu !== undefined && tryToSetMaxCu === true) {
+  if (tryToSetMaxCu !== undefined && tryToSetMaxCu === true) { // 尝试设置最大的cu, 则要在模拟开始前就设置一个最大cu
     const tmpIxs: TransactionInstruction[] = [];
 
     tmpIxs.push(ComputeBudgetProgram.setComputeUnitLimit({ units: MAX_COMPUTE_UNIT_LIMIT }))
     tmpIxs.push(...ixs);
 
-    tx = await buildTransaction(connection, tmpIxs, payer);
+    tx = await buildTransaction({
+      connection: connection,
+      ixs: tmpIxs,
+      payer: payer,
+      addressLookupTables: addressLookupTables
+    });
   } else {
-    tx = await buildTransaction(connection, ixs, payer);
+    tx = await buildTransaction({
+      connection: connection,
+      ixs: ixs,
+      payer: payer,
+      addressLookupTables: addressLookupTables
+    });
   }
 
   // 如果设置了 cuPrice，则要加 cu 限制
@@ -139,7 +169,12 @@ export async function mySendAndConfirmTransaction(
     ixs.unshift(ComputeBudgetProgram.setComputeUnitLimit({ units: cu }));
 
     // 再重新构造 tx
-    tx = await buildTransaction(connection, ixs, payer);
+    tx = await buildTransaction({
+      connection: connection,
+      ixs: ixs,
+      payer: payer,
+      addressLookupTables: addressLookupTables
+    });
   }
 
   if (signers) {
@@ -180,6 +215,7 @@ export async function mySendAndFinalizeTransaction(params: {
   cuPrice?: number,
   signers?: Keypair[]
   tryToSetMaxCu?: boolean
+  addressLookupTables?: AddressLookupTableAccount[] // 可选的使用 AddressLookupTable
 }) {
   const txId = await mySendAndConfirmTransaction(params);
   await waitTransactionFinalized(params.connection, txId);
